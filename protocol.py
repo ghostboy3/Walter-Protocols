@@ -3,8 +3,8 @@ from opentrons import protocol_api
 # metadata
 metadata = {
     "protocolName": "My Protocol",
-    "author": "Name <opentrons@example.com>",
-    "description": "Simple protocol to get started using the Flex",
+    "author": "Hugge Mann",
+    "description": "Hullo world!",
 }
 
 # requirements
@@ -30,4 +30,4 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.pick_up_tip()
     left_pipette.aspirate(100, plate["A1"])
     left_pipette.dispense(100, plate["B2"])
-    left_pipette.drop_tip()
+    left_pipette.drop_tip(trash)
