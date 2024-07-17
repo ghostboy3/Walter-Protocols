@@ -1,6 +1,7 @@
 from opentrons import protocol_api
 import math
 
+
 metadata = {
     "protocolName": "SP3 sample prep",
     "author": "Nico To",
@@ -9,7 +10,7 @@ metadata = {
 
 requirements = {"robotType": "Flex", "apiLevel": "2.19"}
 
-num_samples = 5
+num_samples = 19
 
 # amount of the bead solution in micro liters
 bead_amt = (num_samples +2) *20         #20µl per sample
@@ -56,28 +57,36 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("--------Loading Sample---------")
     # setup protein sample
     for i in range (0, num_samples):
-        left_pipette.pick_up_tip()
-        left_pipette.aspirate(30, sample_storage)
-        left_pipette.dispense(30, working_reagent_reservoir.wells()[i])
-        left_pipette.touch_tip()
-        left_pipette.drop_tip(chute)
+        left_pipette.transfer(30, sample_storage, reagent_plate.wells()[i],touch_tip=True, blow_out=True,blowout_location="destination well")
+        # left_pipette.pick_up_tip()
+        # left_pipette.aspirate(30, sample_storage)
+        # left_pipette.dispense(30, working_reagent_reservoir.wells()[i])
+        # left_pipette.touch_tip()
+        # left_pipette.drop_tip(chute)
     # setup bead sample
     protocol.comment("--------Loading beads---------")
     for i in range (0, num_samples):
-        left_pipette.pick_up_tip()
-        left_pipette.aspirate(20, bead_storage)
-        left_pipette.dispense(20, working_reagent_reservoir.wells()[i])
-        left_pipette.touch_tip()
-        left_pipette.drop_tip(chute)
+        left_pipette.transfer(20, bead_storage, reagent_plate.wells()[i],touch_tip=True, blow_out=True,blowout_location="destination well")
+        # left_pipette.pick_up_tip()
+        # left_pipette.aspirate(20, bead_storage)
+        # left_pipette.dispense(20, working_reagent_reservoir.wells()[i])
+        # left_pipette.touch_tip()
+        # left_pipette.drop_tip(chute)
     protocol.comment("--------Loading Anhydrous Ethanol---------")
     for i in range (0, math.floor(num_samples/8)):
         right_pipette.pick_up_tip()
         right_pipette.aspirate(50, anhy_etho_storage)
-        right_pipette.dispense(50, working_reagent_reservoir.rows()[i])
-        right_pipette.mix(5, 40, working_reagent_reservoir.rows()[i])
-        
+        # print(working_reagent_reservoir.rows()[i])
+        right_pipette.dispense(50, reagent_plate['A' + str(i+1)])
+        right_pipette.mix(5, 40, reagent_plate['A' + str(i+1)])
         right_pipette.drop_tip(chute)
-    # for i in range (0, num_samples%8):
-    #     left_pipette.pick_up_tip()
-    #     left_pipette.aspirate(50, anhy_etho_storage)
-    #     left_pipette.dispense
+    # protocol.comment("--------TESTING---------" + str(num_samples%8))
+    for count, i in enumerate("ABCDEFGH"):
+        if count==(num_samples%8):
+            break
+        left_pipette.pick_up_tip()
+        left_pipette.aspirate(50, anhy_etho_storage)
+        left_pipette.dispense(50, reagent_plate[i+str(math.floor(num_samples/8)+1)])
+        left_pipette.mix(5, 40, reagent_plate[i+str(math.floor(num_samples/8)+1)])
+        left_pipette.drop_tip(chute)
+        
