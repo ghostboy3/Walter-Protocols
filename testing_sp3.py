@@ -31,6 +31,7 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod = protocol.load_module(module_name="heaterShakerModuleV1", location="D1")    #heat shaker module
     tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A2", "stock rack")
     reagent_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B2", "reagent plate")
+    new_vessel = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "C2", "reagent plate")
     working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "B1")
 
     #defining liquids
@@ -44,10 +45,10 @@ def run(protocol: protocol_api.ProtocolContext):
     #loading liquids
     tube_rack["A1"].load_liquid(bead_sol, bead_amt)
     bead_storage = tube_rack["A1"]
-    tube_rack["A2"].load_liquid(protein_sample, bead_amt)   #reagents
-    sample_storage = tube_rack["A2"]    # storage of protein sample
-    tube_rack["A3"].load_liquid(ammonium_bicarbonate, ammonium_bicarbonate_amt)
-    ammonium_bicarbonate_storage = tube_rack["A3"]
+    tube_rack["B1"].load_liquid(protein_sample, bead_amt)   #reagents
+    sample_storage = tube_rack["B1"]    # storage of protein sample
+    tube_rack["C1"].load_liquid(ammonium_bicarbonate, ammonium_bicarbonate_amt)
+    ammonium_bicarbonate_storage = tube_rack["C1"]
     working_reagent_reservoir["A1"].load_liquid(anhy_etho, anhy_etho_amt)
     anhy_etho_storage = working_reagent_reservoir["A1"]
     working_reagent_reservoir["A2"].load_liquid(aque_etho, aque_etho_amt)
@@ -133,7 +134,7 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("---------ADDING DIGESTION BUFFER-----------")
     protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     for i in range (0, num_samples):
-        left_pipette.transfer(20, ammonium_bicarbonate_storage, reagent_plate.wells()[i],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        left_pipette.transfer(20, ammonium_bicarbonate_storage, reagent_plate.wells()[i].bottom(3),touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
     protocol.comment("---------INCUBATING  AT 37°C, 1500RPM, OVERNIGHT-----------")
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
@@ -141,4 +142,23 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.set_and_wait_for_shake_speed(1500)       #1500 rpm
     hs_mod.set_and_wait_for_temperature(37)       #37 deg C
     protocol.delay(seconds=5, msg="5 second incubation")
+    hs_mod.deactivate_shaker()
+    hs_mod.deactivate_heater()
+    hs_mod.open_labware_latch()
 
+    protocol.comment("---------COLLECTING SUPERNATANT-----------")
+    protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
+    for i in range (0, math.ceil(num_samples/8)):
+        right_pipette.transfer(120, reagent_plate['A' + str(i+1)], new_vessel['A' + str(i+1)], touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+    protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
+    protocol.move_labware(new_vessel, magnetic_block, use_gripper=True)
+    
+    protocol.delay(minutes=3, msg="SITTING ON MAGNETIC RACK FOR 3 MIN")
+
+    protocol.comment("---------MOVING SAMPLE TO FINAL VESSEL-----------")
+    counter=len(tube_rack.wells())
+    for i in range (0, num_samples):
+        left_pipette.transfer(120, reagent_plate.wells()[i], tube_rack.wells()[counter-1],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        counter -= 1
+
+    
