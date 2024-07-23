@@ -3,14 +3,14 @@ import math
 
 
 metadata = {
-    "protocolName": "Junk Testing protocol3",
+    "protocolName": "TESTING sp3 protocol3",
     "author": "Hugge Mann",
     "description": "Just playing around with some stuff",
 }
 
 requirements = {"robotType": "Flex", "apiLevel": "2.19"}
 
-num_samples = 2
+num_samples = 1
 
 # amount of the bead solution in micro liters
 bead_amt = (num_samples +2) *20         #20µl per sample
@@ -74,7 +74,8 @@ def run(protocol: protocol_api.ProtocolContext):
         right_pipette.aspirate(50, anhy_etho_storage)
         # print(working_reagent_reservoir.rows()[i])
         right_pipette.dispense(50, reagent_plate['A' + str(i+1)])
-        right_pipette.mix(5, 40, reagent_plate['A' + str(i+1)])
+        right_pipette.mix(5, 40, reagent_plate['A' + str(i+1)].bottom(2))
+        right_pipette.blow_out()
         # right_pipette.drop_tip(chute)
         right_pipette.return_tip()
     for count, i in enumerate("ABCDEFGH"):
@@ -83,7 +84,8 @@ def run(protocol: protocol_api.ProtocolContext):
         left_pipette.pick_up_tip()
         left_pipette.aspirate(50, anhy_etho_storage)
         left_pipette.dispense(50, reagent_plate[i+str(math.floor(num_samples/8)+1)])
-        left_pipette.mix(5, 40, reagent_plate[i+str(math.floor(num_samples/8)+1)])
+        left_pipette.mix(5, 40, reagent_plate[i+str(math.floor(num_samples/8)+1)].bottom(2))
+        left_pipette.blow_out()
         # left_pipette.drop_tip(chute)
         left_pipette.return_tip()
     protocol.comment("--------THERMOMIXER 1000rpm for 5 min---------")
@@ -118,13 +120,14 @@ def run(protocol: protocol_api.ProtocolContext):
     #     right_pipette.drop_tip(chute)
 
     protocol.comment("---------ETHANOL RINSING (x3)-----------")
-    for i in range (0,3):
+    for i in range (0,1):       # temperarily changed to 1
         protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
         for i in range (0, math.ceil(num_samples/8)):
             right_pipette.pick_up_tip()
             right_pipette.aspirate(180, aque_etho_storage)
             right_pipette.dispense(180, reagent_plate['A' + str(i+1)])
-            right_pipette.mix(10, 100, reagent_plate['A' + str(i+1)])
+            right_pipette.mix(10, 100, reagent_plate['A' + str(i+1)].bottom(2))
+            right_pipette.blow_out()
             # right_pipette.drop_tip(chute)
             right_pipette.return_tip()
         protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)  #put back on magnetic rack
@@ -134,7 +137,8 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("---------ADDING DIGESTION BUFFER-----------")
     protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     for i in range (0, num_samples):
-        left_pipette.transfer(20, ammonium_bicarbonate_storage, reagent_plate.wells()[i].bottom(3),touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        #change speed later (make it slower)
+        left_pipette.transfer(100, ammonium_bicarbonate_storage, reagent_plate.wells()[i].bottom(3),touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
     protocol.comment("---------INCUBATING  AT 37°C, 1500RPM, OVERNIGHT-----------")
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
@@ -153,12 +157,12 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     protocol.move_labware(new_vessel, magnetic_block, use_gripper=True)
     
-    protocol.delay(minutes=3, msg="SITTING ON MAGNETIC RACK FOR 3 MIN")
-
+    protocol.delay(seconds=10, msg="SITTING ON MAGNETIC RACK FOR 3 MIN")
+    
     protocol.comment("---------MOVING SAMPLE TO FINAL VESSEL-----------")
     counter=len(tube_rack.wells())
     for i in range (0, num_samples):
-        left_pipette.transfer(120, reagent_plate.wells()[i], tube_rack.wells()[counter-1],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        left_pipette.transfer(120, new_vessel.wells()[i], tube_rack.wells()[counter-1],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
         counter -= 1
 
     
