@@ -10,17 +10,37 @@ metadata = {
 
 requirements = {"robotType": "Flex", "apiLevel": "2.19"}
 
-num_samples = 1
+def add_parameters(parameters: protocol_api.Parameters):
 
-# amount of the bead solution in micro liters
-bead_amt = (num_samples +2) *20         #20µl per sample
-protein_sample_amt = (num_samples + 2)*30
-anhy_etho_amt = (num_samples + 2)*50    #50µl per sample
-aque_etho_amt = (num_samples + 7)*(180*3)    #180µl x 3 rinses per sample
-# trypsin_amt = 0.4 * (num_samples + 2)       #CHANGE LATER
-ammonium_bicarbonate_amt = (num_samples + 2) * 100
+    parameters.add_int(
+        variable_name="numSamples",
+        display_name="Number of Samples",
+        description="Number of samples",
+        default=1,
+        minimum=1,
+        maximum=30,
+        unit="samples"
+    )
+def custom_transfer(volume, source, destination, pipette, blowout_height):
+    pipette.pick_up_tip()
+    pipette.aspirate(volume, source)
+    pipette.dispense(volume, destination)
+    pipette.blow_out(destination.bottom(blowout_height))
+    pipette.drop_tip()
 
 def run(protocol: protocol_api.ProtocolContext):
+    #defining variables
+    num_samples = protocol.params.numSamples
+
+    # amount of the bead solution in micro liters
+    bead_amt = (num_samples +2) *20         #20µl per sample
+    protein_sample_amt = (num_samples + 2)*30
+    anhy_etho_amt = (num_samples + 2)*50    #50µl per sample
+    aque_etho_amt = (num_samples + 7)*(180*3)    #180µl x 3 rinses per sample
+    # trypsin_amt = 0.4 * (num_samples + 2)       #CHANGE LATER
+    ammonium_bicarbonate_amt = (num_samples + 2) * 100
+    
+    
     #loading
     tips1000 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot) for slot in ["A3","B3","C3"]]
     chute = protocol.load_waste_chute()
@@ -67,14 +87,22 @@ def run(protocol: protocol_api.ProtocolContext):
     # setup bead sample
     protocol.comment("--------Loading beads---------")
     for i in range (0, num_samples):
-        left_pipette.transfer(20, bead_storage, reagent_plate.wells()[i],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        left_pipette.pick_up_tip()
+        left_pipette.mix(3, bead_amt-43, bead_storage.bottom(0.5))
+        left_pipette.aspirate(20, bead_storage.bottom(0.5))
+        left_pipette.dispense(20, reagent_plate.wells()[i])
+        left_pipette.touch_tip()
+        left_pipette.blow_out()
+        left_pipette.return_tip()
+        # left_pipette.transfer(20, bead_storage, reagent_plate.wells()[i],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
     protocol.comment("--------Loading Anhydrous Ethanol---------")
     for i in range (0, math.floor(num_samples/8)):
         right_pipette.pick_up_tip()
-        right_pipette.aspirate(50, anhy_etho_storage)
+        right_pipette.aspirate(50, anhy_etho_storage.bottom(1))
         # print(working_reagent_reservoir.rows()[i])
         right_pipette.dispense(50, reagent_plate['A' + str(i+1)])
         right_pipette.mix(5, 40, reagent_plate['A' + str(i+1)].bottom(2))
+        right_pipette.touch_tip()
         right_pipette.blow_out()
         # right_pipette.drop_tip(chute)
         right_pipette.return_tip()
@@ -82,9 +110,10 @@ def run(protocol: protocol_api.ProtocolContext):
         if count==(num_samples%8):
             break
         left_pipette.pick_up_tip()
-        left_pipette.aspirate(50, anhy_etho_storage)
+        left_pipette.aspirate(50, anhy_etho_storage.bottom(1))
         left_pipette.dispense(50, reagent_plate[i+str(math.floor(num_samples/8)+1)])
         left_pipette.mix(5, 40, reagent_plate[i+str(math.floor(num_samples/8)+1)].bottom(2))
+        left_pipette.touch_tip()
         left_pipette.blow_out()
         # left_pipette.drop_tip(chute)
         left_pipette.return_tip()
@@ -93,7 +122,7 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
     hs_mod.close_labware_latch()
     hs_mod.set_and_wait_for_shake_speed(1000)       #1000 rpm
-    protocol.delay(seconds=5, msg="5 second incubation")
+    protocol.delay(seconds=5, msg="5 minute incubation")
     # deactivating heat shaker
     hs_mod.deactivate_shaker()
     hs_mod.open_labware_latch()
@@ -105,47 +134,51 @@ def run(protocol: protocol_api.ProtocolContext):
         '''amt: amount ot aspirirate out'''
         for i in range (0, math.ceil(num_samples/8)):
             right_pipette.pick_up_tip()
-            right_pipette.aspirate(amt, reagent_plate['A' + str(i+1)])
+            right_pipette.aspirate(amt, reagent_plate['A' + str(i+1)].bottom(0.5))
             right_pipette.dispense(amt, trash1)
             right_pipette.return_tip()
             # right_pipette.drop_tip(chute) 
     
     # Aspirating - play around with how deep the tip has to go
     # washing could be done outside of walt
-    aspirate_spuernatent_to_trash(50)
+    protocol.delay(seconds=30)
+    aspirate_spuernatent_to_trash(250)
     # for i in range (0, math.ceil(num_samples/8)):
     #     right_pipette.pick_up_tip()
     #     right_pipette.aspirate(50, reagent_plate['A' + str(i+1)])
     #     right_pipette.dispense(50, trash1)
     #     right_pipette.drop_tip(chute)
 
-    protocol.comment("---------ETHANOL RINSING (x3)-----------")
+    protocol.comment("---------ETHANOL RINSING (x4)-----------")
     for i in range (0,1):       # temperarily changed to 1
         protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
         for i in range (0, math.ceil(num_samples/8)):
             right_pipette.pick_up_tip()
-            right_pipette.aspirate(180, aque_etho_storage)
-            right_pipette.dispense(180, reagent_plate['A' + str(i+1)])
-            right_pipette.mix(10, 100, reagent_plate['A' + str(i+1)].bottom(2))
+            right_pipette.aspirate(150, aque_etho_storage.bottom(1))
+            right_pipette.dispense(150, reagent_plate['A' + str(i+1)])
+            right_pipette.mix(10, 100, reagent_plate['A' + str(i+1)].bottom(3))
             right_pipette.blow_out()
             # right_pipette.drop_tip(chute)
             right_pipette.return_tip()
         protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)  #put back on magnetic rack
         protocol.delay(seconds=10)
         #aspirate the supernatant
-        aspirate_spuernatent_to_trash(250)      #CHANGE THIS VALUE
+        aspirate_spuernatent_to_trash(250)
     protocol.comment("---------ADDING DIGESTION BUFFER-----------")
     protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     for i in range (0, num_samples):
         #change speed later (make it slower)
-        left_pipette.transfer(100, ammonium_bicarbonate_storage, reagent_plate.wells()[i].bottom(3),touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        left_pipette.transfer(100, ammonium_bicarbonate_storage.bottom(1), reagent_plate.wells()[i].bottom(3),touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
     protocol.comment("---------INCUBATING  AT 37°C, 1500RPM, OVERNIGHT-----------")
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
     hs_mod.close_labware_latch()
+    #Wait for user to put lid on
+    protocol.pause("Put the lid on!!!")
     hs_mod.set_and_wait_for_shake_speed(1500)       #1500 rpm
     hs_mod.set_and_wait_for_temperature(37)       #37 deg C
-    protocol.delay(seconds=5, msg="5 second incubation")
+    # protocol.delay(seconds=5, msg="5 second incubation")
+    protocol.pause("Press stop when done!!! (～￣▽￣)～")
     hs_mod.deactivate_shaker()
     hs_mod.deactivate_heater()
     hs_mod.open_labware_latch()
@@ -153,7 +186,7 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("---------COLLECTING SUPERNATANT-----------")
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     for i in range (0, math.ceil(num_samples/8)):
-        right_pipette.transfer(120, reagent_plate['A' + str(i+1)], new_vessel['A' + str(i+1)], touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        right_pipette.transfer(120, reagent_plate['A' + str(i+1)].bottom(0.5), new_vessel['A' + str(i+1)].bottom(0.5), touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
     protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     protocol.move_labware(new_vessel, magnetic_block, use_gripper=True)
     
@@ -162,7 +195,7 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("---------MOVING SAMPLE TO FINAL VESSEL-----------")
     counter=len(tube_rack.wells())
     for i in range (0, num_samples):
-        left_pipette.transfer(120, new_vessel.wells()[i], tube_rack.wells()[counter-1],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        left_pipette.transfer(120, new_vessel.wells()[i].bottom(0.5), tube_rack.wells()[counter-1].bottom(0.5),touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
         counter -= 1
 
     
