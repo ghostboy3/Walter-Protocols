@@ -25,7 +25,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         default=22,
         minimum=1,
         maximum=95,
-        unit="degrees Celcius"
+        unit="°C"
     )
 def run(protocol: protocol_api.ProtocolContext):
     hs_mod = protocol.load_module(module_name="heaterShakerModuleV1", location="D1")    #heat shaker module
