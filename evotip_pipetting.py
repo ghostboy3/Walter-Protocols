@@ -3,7 +3,7 @@ import math
 
 
 metadata = {
-    "protocolName": "STrap pipetting",
+    "protocolName": "EvoTip pipetting",
     "author": "Hugge Mann",
     "description": "Automating the pipetting for STrap",
 }
