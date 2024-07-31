@@ -86,8 +86,8 @@ def run(protocol: protocol_api.ProtocolContext):
     right_pipette.flow_rate.dispense = default_dispensing_rate
     
     
-    fast_aspirate_rate = 700
-    fast_dispense_rate = 700
+    fast_aspirate_rate = 800
+    fast_dispense_rate = 1000
     # functions    
     def aspirate_spuernatent_to_trash(pipette, amt):
         '''amt: amount ot aspirirate out'''
@@ -174,12 +174,17 @@ def run(protocol: protocol_api.ProtocolContext):
         for i in range (0, math.ceil(num_samples/8)):
             right_pipette.pick_up_tip()
             right_pipette.aspirate(150, aque_etho_storage.bottom(1))
-            right_pipette.dispense(150, reagent_plate['A' + str(i+1)])
-            
             right_pipette.flow_rate.aspirate = fast_aspirate_rate
             right_pipette.flow_rate.dispense = fast_dispense_rate
-            right_pipette.mix(10, 100, reagent_plate['A' + str(i+1)].bottom(3))
+            right_pipette.dispense(150, reagent_plate['A' + str(i+1)])
+            
+            right_pipette.mix(10, 190, reagent_plate['A' + str(i+1)].bottom(3))
+            right_pipette.flow_rate.aspirate = default_aspirating_rate
+            right_pipette.flow_rate.dispense = default_dispensing_rate
+            right_pipette.mix(2, 150, reagent_plate['A' + str(i+1)].bottom(3))
+
             right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
+            right_pipette.touch_tip()
             # right_pipette.drop_tip(chute)
             right_pipette.return_tip()
             right_pipette.flow_rate.aspirate = default_aspirating_rate

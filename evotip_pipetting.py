@@ -1,10 +1,11 @@
+# D2 -> Reagent Rack, falcon tube in 
+
 from opentrons import protocol_api
 import math
 
-
 metadata = {
     "protocolName": "EvoTip pipetting",
-    "author": "Hugge Mann",
+    "author": "Nico To",
     "description": "Automating the pipetting for STrap",
 }
 requirements = {"robotType": "Flex", "apiLevel": "2.19"}
@@ -19,7 +20,7 @@ def get_height(volume):
         # print(-3.33*(volume**2)+15.45*volume+9.50)
         return -3.33*(volume**2)+15.45*volume+9.50 - 1   #−3.33x2+15.45x+9.50
     else:
-        return 6.41667*volume +15.1667
+        return 6.41667*volume +15.1667 -5
 def add_parameters(parameters: protocol_api.Parameters):
 
     parameters.add_float(
@@ -58,6 +59,13 @@ def add_parameters(parameters: protocol_api.Parameters):
         maximum=24,     # change to 24 later (100 is for testing purposes)
         unit="samples"
     )
+
+# pipette speeds in µl/min
+default_aspriate_speed = 300
+default_dispense_speed = 500
+slow_aspirate_speed = 300
+slow_dispense_speed = 500
+
 # print(get_height(5))
 def run(protocol: protocol_api.ProtocolContext):
     buffer_stock_amt = protocol.params.buffer_stock_amt            # amount of the buffer stock in ml
@@ -69,8 +77,8 @@ def run(protocol: protocol_api.ProtocolContext):
     tips1000 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot) for slot in ["A3"]]   # add more later
     tips50 = [protocol.load_labware("opentrons_flex_96_filtertiprack_50uL", slot) for slot in ["B3"]]   # add more later
     reagent_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "D2", "reagent stock rack")
-    sample_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "C2", "peptide sample rack")
-    solution_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "B2", "final solution rack")
+    sample_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "C1", "peptide sample rack")
+    solution_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "C2", "final solution rack")
     # left_pipette = protocol.load_instrument("flex_1channel_1000", "left", tip_racks=tips1000)
     left_pipette = protocol.load_instrument("flex_1channel_1000", "left", tip_racks=tips1000)
     right_pipette = protocol.load_instrument("flex_1channel_50", "right", tip_racks=tips50)
@@ -90,18 +98,27 @@ def run(protocol: protocol_api.ProtocolContext):
         # loading sample
         print(sample_rack.wells())
         right_pipette.pick_up_tip()
-        right_pipette.aspirate(sample_in_solution_amt, sample_rack.wells()[i])
+        right_pipette.aspirate(sample_in_solution_amt, sample_rack.wells()[i].bottom(3))
         right_pipette.dispense(sample_in_solution_amt, solution_rack.wells()[i])
         right_pipette.blow_out(solution_rack.wells()[i].top())
         right_pipette.touch_tip()
-        right_pipette.return_tip()
+        # right_pipette.return_tip()
+        right_pipette.drop_tip(chute)
         
         #loading buffer
         amount_of_buffer_remaining = buffer_stock_amt*1000-(i*buffer_in_solution_amt)       # in ml
         left_pipette.pick_up_tip()
         left_pipette.aspirate(buffer_in_solution_amt, reagent_stock_storage.bottom(get_height((amount_of_buffer_remaining-buffer_in_solution_amt)/1000)-2))
         left_pipette.dispense(buffer_in_solution_amt, solution_rack.wells()[i])
-        left_pipette.mix(5, buffer_in_solution_amt, solution_rack.wells()[i].bottom(1))
-        #add mixing step
         left_pipette.blow_out(solution_rack.wells()[i].top())
-        left_pipette.return_tip()
+        left_pipette.flow_rate.aspirate = slow_aspirate_speed
+        left_pipette.flow_rate.dispense = slow_dispense_speed
+        left_pipette.mix(5, buffer_in_solution_amt-5, solution_rack.wells()[i].bottom(2))
+        left_pipette.flow_rate.aspirate = default_aspriate_speed
+        left_pipette.flow_rate.dispense = default_dispense_speed
+        
+        left_pipette.blow_out(solution_rack.wells()[i].top())
+        left_pipette.touch_tip()
+        left_pipette.blow_out(solution_rack.wells()[i].top())
+        # left_pipette.return_tip()
+        left_pipette.drop_tip(chute)
