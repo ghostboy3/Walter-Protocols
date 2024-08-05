@@ -3,8 +3,8 @@ import math
 
 
 metadata = {
-    "protocolName": "SP3 protocol",
-    "author": "Nico To",
+    "protocolName": "TESTING sp3 protocol3",
+    "author": "Hugge Mann",
     "description": "Just playing around with some stuff",
 }
 
@@ -21,14 +21,22 @@ def add_parameters(parameters: protocol_api.Parameters):
         maximum=30,
         unit="samples"
     )
+    parameters.add_bool(
+        variable_name="dry_run",
+        display_name="Dry Run",
+        description="Skip incubation delays and return tips.",
+        default=True
+    )
 
+    
+slow_aspiration_rate = 10 # in microliters per second
 
 def run(protocol: protocol_api.ProtocolContext):
     #defining variables
     num_samples = protocol.params.numSamples
 
     # amount of the bead solution in micro liters
-    bead_amt = (num_samples +1) *20         #20µl per sample
+    bead_amt = (num_samples +2) *20         #20µl per sample
     protein_sample_amt = (num_samples + 2)*30
     anhy_etho_amt = (num_samples + 2)*50    #50µl per sample
     aque_etho_amt = (num_samples + 7)*(180*3)    #180µl x 3 rinses per sample
@@ -75,60 +83,105 @@ def run(protocol: protocol_api.ProtocolContext):
     #trash reservoirs
     trash1=working_reagent_reservoir["A11"]
     
+    
+    #setting defaults
+    
+    default_aspirating_rate = 300
+    default_dispensing_rate = 500
+    left_pipette.flow_rate.aspirate = default_aspirating_rate
+    right_pipette.flow_rate.aspirate = default_aspirating_rate
+    left_pipette.flow_rate.dispense = default_dispensing_rate
+    right_pipette.flow_rate.dispense = default_dispensing_rate
+    
+    
+    fast_aspirate_rate = 1000
+    fast_dispense_rate = 1200
+    slow_aspirate_rate = 200
+    slow_dispense_rate = 200
+    # functions    
+    def aspirate_spuernatent_to_trash(pipette, amt):
+        '''amt: amount ot aspirirate out'''
+        pipette.flow_rate.dispense = 500
+        for i in range (0, math.ceil(num_samples/8)):
+            pipette.pick_up_tip()
+            pipette.aspirate(amt, reagent_plate['A' + str(i+1)].bottom(0.5))
+            pipette.dispense(amt, trash1)
+            remove_tip(pipette, protocol.params.dry_run)
+            # pipette.return_tip()
+        pipette.flow_rate.dispense = default_dispensing_rate
+            # right_pipette.drop_tip(chute) 
+    def remove_tip(pipette, is_dry_run):
+        if is_dry_run:
+            pipette.return_tip()
+        else:
+            pipette.drop_tip(chute)
+    
     protocol.comment("--------Loading Sample---------")
     # setup protein sample
     for i in range (0, num_samples):
-        left_pipette.transfer(30, sample_storage.bottom(2), reagent_plate.wells()[i].bottom(2),touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        left_pipette.pick_up_tip()
+        left_pipette.aspirate(30, sample_storage.bottom(2))
+        left_pipette.dispense(30,reagent_plate.wells()[i].bottom(2))
+        left_pipette.blow_out(reagent_plate.wells()[i].top())
+        left_pipette.touch_tip()
+        remove_tip(left_pipette, protocol.params.dry_run)
+        # left_pipette.return_tip()
+        # left_pipette.transfer(30, sample_storage.bottom(2), reagent_plate.wells()[i].bottom(2), blow_out=True,touch_tip=True,blowout_location="destination well", trash=False)
     # setup bead sample
     protocol.comment("--------Loading beads---------")
     for i in range (0, num_samples):
-        left_pipette.mix(3, bead_amt-3, bead_storage)
-        left_pipette.transfer(20, bead_storage, reagent_plate.wells()[i],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        left_pipette.pick_up_tip()
+        if i % 6 ==0:       # mix the beads every 6 samples
+            left_pipette.mix(3, bead_amt-43, bead_storage.bottom(1))
+            left_pipette.blow_out(bead_storage.top())
+        left_pipette.aspirate(20, bead_storage.bottom(1))
+        left_pipette.dispense(20, reagent_plate.wells()[i])
+        left_pipette.blow_out(reagent_plate.wells()[i].top())
+        left_pipette.touch_tip()
+        remove_tip(left_pipette, protocol.params.dry_run)
+        # left_pipette.return_tip()
+        # left_pipette.transfer(20, bead_storage, reagent_plate.wells()[i],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
     protocol.comment("--------Loading Anhydrous Ethanol---------")
-    for i in range (0, math.floor(num_samples/8)):
+    for i in range (0, math.ceil(num_samples/8)):
         right_pipette.pick_up_tip()
-        right_pipette.aspirate(50, anhy_etho_storage)
+        right_pipette.aspirate(50, anhy_etho_storage.bottom(1))
         # print(working_reagent_reservoir.rows()[i])
         right_pipette.dispense(50, reagent_plate['A' + str(i+1)])
         right_pipette.mix(5, 40, reagent_plate['A' + str(i+1)].bottom(2))
-        right_pipette.blow_out()
+        right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
+        right_pipette.touch_tip()
         # right_pipette.drop_tip(chute)
-        right_pipette.return_tip()
-    for count, i in enumerate("ABCDEFGH"):
-        if count==(num_samples%8):
-            break
-        left_pipette.pick_up_tip()
-        left_pipette.aspirate(50, anhy_etho_storage)
-        left_pipette.dispense(50, reagent_plate[i+str(math.floor(num_samples/8)+1)])
-        left_pipette.mix(5, 40, reagent_plate[i+str(math.floor(num_samples/8)+1)].bottom(2))
-        left_pipette.blow_out()
-        # left_pipette.drop_tip(chute)
-        left_pipette.return_tip()
+        remove_tip(right_pipette, protocol.params.dry_run)
+
+        # right_pipette.return_tip()
+    # for count, i in enumerate("ABCDEFGH"):
+    #     if count==(num_samples%8):
+    #         break
+    #     left_pipette.pick_up_tip()
+    #     left_pipette.aspirate(50, anhy_etho_storage.bottom(1))
+    #     left_pipette.dispense(50, reagent_plate[i+str(math.floor(num_samples/8)+1)])
+    #     left_pipette.mix(5, 40, reagent_plate[i+str(math.floor(num_samples/8)+1)].bottom(2))
+    #     left_pipette.blow_out(reagent_plate[i+str(math.floor(num_samples/8)+1)].top())
+    #     left_pipette.touch_tip()
+    #     # left_pipette.drop_tip(chute)
+    #     left_pipette.return_tip()
     protocol.comment("--------THERMOMIXER 1000rpm for 5 min---------")
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
     hs_mod.close_labware_latch()
     hs_mod.set_and_wait_for_shake_speed(1000)       #1000 rpm
-    protocol.delay(seconds=5, msg="5 minute incubation")
+    protocol.delay(seconds=5 if protocol.params.dry_run else 300, msg="5 minute incubation")
     # deactivating heat shaker
     hs_mod.deactivate_shaker()
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
-    hs_mod.close_labware_latch()
+    # hs_mod.close_labware_latch()
     protocol.comment("--------ASPIRATING SPUERNATANT ON MAGNETIC RACK---------")        # lid not closed, room temperature
-    
-    def aspirate_spuernatent_to_trash(amt):
-        '''amt: amount ot aspirirate out'''
-        for i in range (0, math.ceil(num_samples/8)):
-            right_pipette.pick_up_tip()
-            right_pipette.aspirate(amt, reagent_plate['A' + str(i+1)])
-            right_pipette.dispense(amt, trash1)
-            right_pipette.return_tip()
-            # right_pipette.drop_tip(chute) 
-    
+
     # Aspirating - play around with how deep the tip has to go
     # washing could be done outside of walt
-    aspirate_spuernatent_to_trash(50)
+    protocol.delay(seconds=20)
+    aspirate_spuernatent_to_trash(right_pipette, 250)
     # for i in range (0, math.ceil(num_samples/8)):
     #     right_pipette.pick_up_tip()
     #     right_pipette.aspirate(50, reagent_plate['A' + str(i+1)])
@@ -140,21 +193,33 @@ def run(protocol: protocol_api.ProtocolContext):
         protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
         for i in range (0, math.ceil(num_samples/8)):
             right_pipette.pick_up_tip()
-            right_pipette.aspirate(150, aque_etho_storage)
+            right_pipette.aspirate(150, aque_etho_storage.bottom(1))
+            right_pipette.flow_rate.aspirate = fast_aspirate_rate
+            right_pipette.flow_rate.dispense = fast_dispense_rate
             right_pipette.dispense(150, reagent_plate['A' + str(i+1)])
-            right_pipette.mix(10, 100, reagent_plate['A' + str(i+1)].bottom(3))
-            right_pipette.blow_out()
+            
+            right_pipette.mix(10, 190, reagent_plate['A' + str(i+1)].bottom(3))
+            right_pipette.flow_rate.aspirate = default_aspirating_rate
+            right_pipette.flow_rate.dispense = default_dispensing_rate
+            # maybe make this speed really slow?
+            right_pipette.mix(2, 150, reagent_plate['A' + str(i+1)].bottom(3))
+
+            right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
+            right_pipette.touch_tip()
             # right_pipette.drop_tip(chute)
-            right_pipette.return_tip()
+            # right_pipette.return_tip()
+            remove_tip(right_pipette, protocol.params.dry_run)
+            right_pipette.flow_rate.aspirate = default_aspirating_rate
+            right_pipette.flow_rate.dispense = default_dispensing_rate
         protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)  #put back on magnetic rack
-        protocol.delay(seconds=10)
+        protocol.delay(seconds=17)
         #aspirate the supernatant
-        aspirate_spuernatent_to_trash(250)
+        aspirate_spuernatent_to_trash(right_pipette, 250)
     protocol.comment("---------ADDING DIGESTION BUFFER-----------")
     protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     for i in range (0, num_samples):
         #change speed later (make it slower)
-        left_pipette.transfer(100, ammonium_bicarbonate_storage, reagent_plate.wells()[i].bottom(3),touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        left_pipette.transfer(100, ammonium_bicarbonate_storage.bottom(1), reagent_plate.wells()[i].bottom(3),touch_tip=True, blow_out=False, trash=False)
     protocol.comment("---------INCUBATING  AT 37°C, 1500RPM, OVERNIGHT-----------")
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
@@ -171,17 +236,32 @@ def run(protocol: protocol_api.ProtocolContext):
 
     protocol.comment("---------COLLECTING SUPERNATANT-----------")
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
+    protocol.delay(seconds=30, msg="pausing for 30 sec")
     for i in range (0, math.ceil(num_samples/8)):
-        right_pipette.transfer(120, reagent_plate['A' + str(i+1)], new_vessel['A' + str(i+1)], touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        #change blowout
+        right_pipette.pick_up_tip()
+        right_pipette.aspirate(120, reagent_plate['A' + str(i+1)].bottom(0.25))
+        right_pipette.dispense(120, new_vessel['A' + str(i+1)].bottom(0.5))
+        right_pipette.blow_out(new_vessel['A' + str(i+1)].top())
+        right_pipette.touch_tip()
+        remove_tip(right_pipette, protocol.params.dry_run)
+
+        # right_pipette.return_tip()
+        # right_pipette.transfer(120, reagent_plate['A' + str(i+1)].bottom(0.5), new_vessel['A' + str(i+1)].bottom(0.5), blow_out=True, touch_tip=True, blowout_location="destination well", trash=False)
     protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     protocol.move_labware(new_vessel, magnetic_block, use_gripper=True)
     
-    protocol.delay(seconds=10, msg="SITTING ON MAGNETIC RACK FOR 3 MIN")
+    protocol.delay(seconds=10 if protocol.params.dry_run else 180, msg="SITTING ON MAGNETIC RACK FOR 3 MIN")
     
     protocol.comment("---------MOVING SAMPLE TO FINAL VESSEL-----------")
     counter=len(tube_rack.wells())
     for i in range (0, num_samples):
-        left_pipette.transfer(120, new_vessel.wells()[i], tube_rack.wells()[counter-1],touch_tip=True, blow_out=True,blowout_location="destination well", trash=False)
+        left_pipette.pick_up_tip()
+        left_pipette.aspirate(120, new_vessel.wells()[i].bottom(0.25))
+        left_pipette.dispense(120, tube_rack.wells()[counter-1].bottom(0.5))
+        left_pipette.blow_out(tube_rack.wells()[counter-1].top())
+        left_pipette.touch_tip()
+        # left_pipette.return_tip()
+        remove_tip(left_pipette, protocol.params.dry_run)
+        # left_pipette.transfer(120, new_vessel.wells()[i].bottom(0.25), tube_rack.wells()[counter-1].bottom(0.5), blow_out=True,touch_tip=True,blowout_location="destination well", trash=False)
         counter -= 1
-
-    
