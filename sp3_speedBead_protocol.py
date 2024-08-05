@@ -3,9 +3,9 @@ import math
 
 
 metadata = {
-    "protocolName": "TESTING sp3 protocol3",
-    "author": "Hugge Mann",
-    "description": "Just playing around with some stuff",
+    "protocolName": "SP3 protocol",
+    "author": "Nico To",
+    "description": "Speed bead sp3 protocol",
 }
 
 requirements = {"robotType": "Flex", "apiLevel": "2.19"}
@@ -198,9 +198,9 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.flow_rate.dispense = fast_dispense_rate
             right_pipette.dispense(150, reagent_plate['A' + str(i+1)])
             
-            right_pipette.mix(10, 190, reagent_plate['A' + str(i+1)].bottom(3))
-            right_pipette.flow_rate.aspirate = default_aspirating_rate
-            right_pipette.flow_rate.dispense = default_dispensing_rate
+            right_pipette.mix(12, 190, reagent_plate['A' + str(i+1)].bottom(3))
+            right_pipette.flow_rate.aspirate = slow_aspirate_rate
+            right_pipette.flow_rate.dispense = slow_dispense_rate
             # maybe make this speed really slow?
             right_pipette.mix(2, 150, reagent_plate['A' + str(i+1)].bottom(3))
 
