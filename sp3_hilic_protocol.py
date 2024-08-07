@@ -33,7 +33,14 @@ def get_height_smalltube(volume):
     Volume: amount of liquid in 1.5ml tube in µL
     Returns height in mm from the bottom of tube that pipette should go to
     '''  
-    return 2
+    # volume = volume/1000
+    if volume <= 500:     # cone part aaa
+        volume = volume/1000
+        return -26.8*(volume**2)+45.1*volume+3.98-5 #−26.80x2 +45.10x+3.98
+
+    elif volume > 500:
+        return 0.015*volume+11.5-4
+
 def get_height_falcon(volume):
     '''
     Get's the height of the liquid in the tube
