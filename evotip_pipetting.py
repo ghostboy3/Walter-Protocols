@@ -91,9 +91,9 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="resuspend_amt",
         display_name="Resuspend Amount",
         description="Amout of buffer that peptides are resuspended in or amount of buffer walt should resuspend in",
-        default=8,
+        default=80,
         minimum=1,
-        maximum=50,     # change to 24 later (100 is for testing purposes)
+        maximum=1500,
         unit="µl"
     )
     parameters.add_bool(
