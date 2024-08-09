@@ -1,5 +1,5 @@
 from opentrons import protocol_api
-
+import requests
 # metadata
 metadata = {
     "protocolName": "1.5ml tube testing Protocol",
@@ -42,6 +42,16 @@ def add_parameters(parameters: protocol_api.Parameters):
 
 # protocol run function
 def run(protocol):
+    
+    def send_command_to_raspberry_pi(command):
+        url = 'https://httpbin.org/post'#'http://<raspberry-pi-ip>:5000/command'
+        data = {'command': command}
+        response = requests.post(url)
+        if response.status_code == 200:
+            protocol.comment('\n\n\n command sent successfully\n\n\n')
+        else:
+            protocol.comment('\n\n\n command not sent successfully\n\n\n')
+
     def get_height(volume):
         '''
         Get's the height of the liquid in the tube
@@ -80,4 +90,6 @@ def run(protocol):
         # right_pipette.aspirate(sample_in_solution_amt, sample_stock.bottom(10))
         left_pipette.dispense(sample_in_solution_amt, tube_rack["D2"].top())
         left_pipette.blow_out(tube_rack["D2"].top())
+    send_command_to_raspberry_pi('start_experiment')
+
     left_pipette.return_tip()
