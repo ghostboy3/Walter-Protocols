@@ -4,7 +4,7 @@ from opentrons import protocol_api
 import math
 
 metadata = {
-    "protocolName": "EvoTip pipetting",
+    "protocolName": "Pre EvoTip pipetting",
     "author": "Nico To",
     "description": "Automating the pipetting for STrap",
 }
