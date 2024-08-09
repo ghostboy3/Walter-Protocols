@@ -150,13 +150,15 @@ def run(protocol: protocol_api.ProtocolContext):
     for i in range (0, num_samples):
         #respspending peptides
         if protocol.params.resuspend:
-            for i in range (0, num_samples):
-                amount_of_buffer_remaining-= sample_in_solution_amt
-                get_pipette(sample_stock_amt).pick_up_tip()
-                get_pipette(sample_stock_amt).aspirate(sample_stock_amt, reagent_stock_storage.bottom(get_height_falcon(amount_of_buffer_remaining)-2))
-                get_pipette(sample_stock_amt).dispense(sample_stock_amt, sample_rack.wells()[i].bottom(1))
-                get_pipette(sample_stock_amt).mix(12, sample_stock_amt-3,sample_rack.wells()[i].bottom(1),2)
-                remove_tip(get_pipette(sample_stock_amt), protocol.params.dry_run)
+            # for i in range (0, num_samples):
+            amount_of_buffer_remaining-= sample_in_solution_amt
+            get_pipette(sample_stock_amt).pick_up_tip()
+            get_pipette(sample_stock_amt).aspirate(sample_stock_amt, reagent_stock_storage.bottom(get_height_falcon(amount_of_buffer_remaining)-2))
+            get_pipette(sample_stock_amt).dispense(sample_stock_amt, sample_rack.wells()[i].bottom(1))
+            get_pipette(sample_stock_amt).mix(12, sample_stock_amt-3,sample_rack.wells()[i].bottom(1),2)
+            get_pipette(sample_stock_amt).blow_out(sample_rack.wells()[i].top())
+            get_pipette(sample_stock_amt).touch_tip()
+            remove_tip(get_pipette(sample_stock_amt), protocol.params.dry_run)
         #loading sample
         right_pipette.pick_up_tip()
         protocol.comment("\n\n" + str(get_height_smalltube(sample_stock_amt-sample_in_solution_amt)) + "\n\n")
