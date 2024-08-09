@@ -257,7 +257,7 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.open_labware_latch()
     
     protocol.comment("\nRecovering the microparticles on magnetic separator and aspirating the supernatant containing peptides with a pipette")
-    protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
+    protocol.move_labware(hs_mod, magnetic_block, use_gripper=True)
     protocol.delay(seconds=20, msg="waiting for beads to settle (20 sec)")
     counter=len(tube_rack.wells())-1
     for i in range (0, num_samples):
