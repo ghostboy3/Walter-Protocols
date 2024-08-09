@@ -65,6 +65,7 @@ def run(protocol: protocol_api.ProtocolContext):
     wash_buffer_amt = 14       #ml
     digestion_buffer_stock_amt = 1000    #µl
     digestion_buffer_per_sample_amt = 150       #100-150µl
+    num_washes = 3
     
     #loading
     tips1000 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot) for slot in ["A3","B3","C3"]]
@@ -146,7 +147,7 @@ def run(protocol: protocol_api.ProtocolContext):
     aspirate_spuernatent_to_trash(right_pipette, 50)
     
     protocol.comment("\nWashing and equilibrating the microparticles in 180µl Equilibration Buffer (2 times)")
-    for i in range (0,2):    
+    for i in range (0,num_washes):    
         protocol.comment("Wash number: "+  str(i+1))
         protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
         for i in range (0, num_samples):
@@ -206,7 +207,7 @@ def run(protocol: protocol_api.ProtocolContext):
     
     protocol.comment("\nResuspend beads in 180µl wash buffer and mix thoroughly for 1 minute (x2)")     # TO-DO: PUT THIS INTO A FRICKEN FUNCTION!
     # protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
-    for i in range (0,2):    
+    for i in range (0,num_washes):    
         protocol.comment("Resuspend number: "+  str(i+1))
         protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
         for i in range (0, num_samples):
