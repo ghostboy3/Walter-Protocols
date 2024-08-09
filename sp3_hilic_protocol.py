@@ -59,10 +59,10 @@ def run(protocol: protocol_api.ProtocolContext):
     num_samples = protocol.params.numSamples
     
     bead_amt = (num_samples + 1)*25     #µl
-    protein_sample_amt = 35     # amount of protein per sample (µl)
-    equilibartion_buffer_amt = 14       #ml
-    binding_buffer_amt = 14       #ml
-    wash_buffer_amt = 14       #ml
+    protein_sample_amt = 25     # amount of protein per sample (µl)
+    equilibartion_buffer_amt = 8       #ml
+    binding_buffer_amt = 8       #ml
+    wash_buffer_amt = 8       #ml
     digestion_buffer_stock_amt = 1000    #µl
     digestion_buffer_per_sample_amt = 150       #100-150µl
     num_washes = 3
