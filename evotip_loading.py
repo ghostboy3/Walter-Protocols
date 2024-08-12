@@ -1,7 +1,10 @@
 from opentrons import protocol_api
 import math
-import requests
+# import requests
 import urllib.request
+import urllib.parse
+import json
+
 
 
 metadata = {
@@ -35,11 +38,19 @@ def add_parameters(parameters: protocol_api.Parameters):
 def send_command_to_raspberry_pi(command):
     url = "http://10.197.116.85:5000/command"
     data = {"command": command}
-    response = requests.post(url, json=data)
-    if response.status_code == 200:
-        print(f"{command} command sent successfully")
-    else:
-        print(f"Failed to send {command} command")
+    data_encoded = json.dumps(data).encode('utf-8')
+    
+    req = urllib.request.Request(url, data=data_encoded, headers={'Content-Type': 'application/json'})
+    
+    try:
+        with urllib.request.urlopen(req) as response:
+            if response.status == 200:
+                print(f"{command} command sent successfully")
+            else:
+                print(f"Failed to send {command} command")
+    except urllib.error.URLError as e:
+        print(f"Failed to send {command} command. Error: {e.reason}")
+
 
 def run(protocol: protocol_api.ProtocolContext):
     num_samples = protocol.params.numSamples

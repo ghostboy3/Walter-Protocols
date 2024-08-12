@@ -6,7 +6,7 @@ import math
 metadata = {
     "protocolName": "Pre EvoTip pipetting",
     "author": "Nico To",
-    "description": "Automating the pipetting for STrap",
+    "description": "Automating the pipetting for evotip loading",
 }
 requirements = {"robotType": "Flex", "apiLevel": "2.19"}
 
@@ -30,10 +30,10 @@ def get_height_smalltube(volume):
     # volume = volume/1000
     if volume <= 500:     # cone part aaa
         volume = volume/1000
-        return -26.8*(volume**2)+45.1*volume+3.98-5 #−26.80x2 +45.10x+3.98
+        return -26.8*(volume**2)+45.1*volume+3.98-4 #−26.80x2 +45.10x+3.98
 
     elif volume > 500:
-        return 0.015*volume+11.5-4
+        return 0.015*volume+11.5-1
 def add_parameters(parameters: protocol_api.Parameters):
 
     parameters.add_float(
@@ -91,9 +91,9 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="resuspend_amt",
         display_name="Resuspend Amount",
         description="Amout of buffer that peptides are resuspended in or amount of buffer walt should resuspend in",
-        default=8,
+        default=80,
         minimum=1,
-        maximum=50,     # change to 24 later (100 is for testing purposes)
+        maximum=1000,     # change to 24 later (100 is for testing purposes)
         unit="µl"
     )
     parameters.add_bool(
@@ -155,13 +155,14 @@ def run(protocol: protocol_api.ProtocolContext):
             get_pipette(sample_stock_amt).pick_up_tip()
             get_pipette(sample_stock_amt).aspirate(sample_stock_amt, reagent_stock_storage.bottom(get_height_falcon(amount_of_buffer_remaining)-2))
             get_pipette(sample_stock_amt).dispense(sample_stock_amt, sample_rack.wells()[i].bottom(1))
-            get_pipette(sample_stock_amt).mix(12, sample_stock_amt,sample_rack.wells()[i].bottom(1),2)
+            get_pipette(sample_stock_amt).mix(12, sample_stock_amt,sample_rack.wells()[i].bottom(1),3)
             get_pipette(sample_stock_amt).blow_out(sample_rack.wells()[i].top())
             get_pipette(sample_stock_amt).touch_tip()
             remove_tip(get_pipette(sample_stock_amt), protocol.params.dry_run)
         #loading sample
         right_pipette.pick_up_tip()
         protocol.comment("\n\n" + str(get_height_smalltube(sample_stock_amt-sample_in_solution_amt)) + "\n\n")
+        protocol.comment("\n\n" + str(sample_stock_amt-sample_in_solution_amt) + "\n\n")
 
         right_pipette.aspirate(sample_in_solution_amt, sample_rack.wells()[i].bottom(get_height_smalltube(sample_stock_amt-sample_in_solution_amt)))
         right_pipette.dispense(sample_in_solution_amt, solution_rack.wells()[i])
