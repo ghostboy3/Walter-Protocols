@@ -16,7 +16,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="numSamples",
         display_name="Number of Samples",
         description="Number of samples",
-        default=1,
+        default=2,
         minimum=1,
         maximum=30,
         unit="samples"
@@ -148,6 +148,12 @@ def run(protocol: protocol_api.ProtocolContext):
         # print(working_reagent_reservoir.rows()[i])
         right_pipette.dispense(50, reagent_plate['A' + str(i+1)])
         right_pipette.mix(5, 40, reagent_plate['A' + str(i+1)].bottom(2))
+        # no bubbles
+        right_pipette.flow_rate.aspirate = default_aspirating_rate
+        right_pipette.flow_rate.dispense = default_dispensing_rate
+        right_pipette.aspirate(60, reagent_plate['A' + str(i+1)].bottom(), rate = 0.5)
+        right_pipette.dispense(60, reagent_plate['A' + str(i+1)].top(), rate = 1)
+
         right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
         right_pipette.touch_tip()
         # right_pipette.drop_tip(chute)
@@ -202,7 +208,12 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.flow_rate.aspirate = slow_aspirate_rate
             right_pipette.flow_rate.dispense = slow_dispense_rate
             # maybe make this speed really slow?
+            # no bubbles
             right_pipette.mix(2, 140, reagent_plate['A' + str(i+1)].bottom(3))
+            right_pipette.flow_rate.aspirate = default_aspirating_rate
+            right_pipette.flow_rate.dispense = default_dispensing_rate
+            right_pipette.aspirate(60, reagent_plate['A' + str(i+1)].bottom(), rate = 0.5)
+            right_pipette.dispense(60, reagent_plate['A' + str(i+1)].top(), rate = 1)
 
             right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
             right_pipette.touch_tip()
