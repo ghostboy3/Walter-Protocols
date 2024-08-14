@@ -15,7 +15,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="sample_stock_amt",
         display_name="sample stock amount",
         description="amount of the protein sample inside the 1.5 ml tubes",
-        default=500,
+        default=50,
         minimum=1,
         maximum=1500,
         unit="µl"
@@ -24,16 +24,16 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="num_samples",
         display_name="number of samples",
         description="total number of samples",
-        default=9,
+        default=10,
         minimum=1,
-        maximum=100,     # change to 24 later (100 is for testing purposes)
+        maximum=1000,     # change to 24 later (100 is for testing purposes)
         unit="samples"
     )
     parameters.add_int(
         variable_name="sample_in_solution_amt",
         display_name="sample in solution amount",
         description="amount of the peptide sample solution that needs to be added to the buffer in microlitres",
-        default=50,
+        default=5,
         minimum=1,
         maximum=100,
         unit="µl"
@@ -57,13 +57,31 @@ def run(protocol):
         Volume: volume of liquid in tube in µl
         Return: hieght from bottom of tube in millimeters
         '''
+        height = 1
         # volume = volume/1000
-        if volume <= 500:     # cone part aaa
+        if volume <= 500 and volume >= 250:     # cone part aaa
             volume = volume/1000
-            return -26.8*(volume**2)+45.1*volume+3.98-5 #−26.80x2 +45.10x+3.98
+            height = -26.8*(volume**2)+45.1*volume+3.98-5 #−26.80x2 +45.10x+3.98
+        elif volume <= 250 and volume >= 35:     # cone part aaa
+            volume = volume/1000
+            height = -26.8*(volume**2)+45.1*volume+3.9-3.5 #−26.80x2 +45.10x+3.98
+        elif volume <= 35 and volume >= 15:     # cone part aaa
+            volume = volume/1000
+            height = -26.8*(volume**2)+45.1*volume+3.9-4.5 #−26.80x2 +45.10x+3.98
+        elif volume <= 15 and volume >= 0:     # cone part aaa
+            volume = volume/1000
+            height = -26.8*(volume**2)+45.1*volume+3.9-5.5 #−26.80x2 +45.10x+3.98
 
-        elif volume > 500:
-            return 0.015*volume+11.5-4
+        elif volume > 500 and volume < 750:
+            height= 0.015*volume+11.5-5
+        elif volume > 750:
+            height= 0.015*volume+11.5-4
+
+        if height < 0.1 or volume <=5: 
+            return 0.1
+        else:
+            return height
+        
     sample_in_solution_amt = protocol.params.sample_in_solution_amt    # amount of sample that goes into each solution in microlitres
     num_samples = protocol.params.num_samples
     

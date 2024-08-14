@@ -34,7 +34,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="equilibartion_buffer_amt",
         display_name="equilibartion_buffer_amt",
         description="amount of equilibration buffer stock",
-        default=20,
+        default=5,
         minimum=1,
         maximum=30,
         unit="ml"
@@ -43,7 +43,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="binding_buffer_amt",
         display_name="binding_buffer_amt",
         description="amount of binding buffer stock",
-        default=20,
+        default=5,
         minimum=1,
         maximum=30,
         unit="ml"
@@ -52,7 +52,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="wash_buffer_amt",
         display_name="wash_buffer_amt",
         description="amount of wash buffer stock",
-        default=20,
+        default=5,
         minimum=1,
         maximum=30,
         unit="ml"
@@ -84,20 +84,32 @@ def add_parameters(parameters: protocol_api.Parameters):
 
 def get_height_smalltube(volume):
     '''
-    Volume: amount of liquid in 1.5ml tube in µL
-    Returns height in mm from the bottom of tube that pipette should go to
-    '''  
+    Get's the height of the liquid in the tube
+    Volume: volume of liquid in tube in µl
+    Return: hieght from bottom of tube in millimeters
+    '''
     height = 1
     # volume = volume/1000
-    if volume <= 500:     # cone part aaa
+    if volume <= 500 and volume >= 250:     # cone part aaa
         volume = volume/1000
         height = -26.8*(volume**2)+45.1*volume+3.98-5 #−26.80x2 +45.10x+3.98
+    elif volume <= 250 and volume >= 35:     # cone part aaa
+        volume = volume/1000
+        height = -26.8*(volume**2)+45.1*volume+3.9-3.5 #−26.80x2 +45.10x+3.98
+    elif volume <= 35 and volume >= 15:     # cone part aaa
+        volume = volume/1000
+        height = -26.8*(volume**2)+45.1*volume+3.9-4.5 #−26.80x2 +45.10x+3.98
+    elif volume <= 15 and volume >= 0:     # cone part aaa
+        volume = volume/1000
+        height = -26.8*(volume**2)+45.1*volume+3.9-5.5 #−26.80x2 +45.10x+3.98
 
-    elif volume > 500:
-        height =  0.015*volume+11.5-4
-    
-    if height < 1: 
-        return 1
+    elif volume > 500 and volume < 750:
+        height= 0.015*volume+11.5-5
+    elif volume > 750:
+        height= 0.015*volume+11.5-4
+
+    if height < 0.1 or volume <=7: 
+        return 0.1
     else:
         return height
 
@@ -116,6 +128,9 @@ def get_height_falcon(volume):
 
 def run(protocol: protocol_api.ProtocolContext):
     #defining variables
+    wash_volume = 150   #µl
+    shake_speed = 1250 #rpm
+    num_washes = 3
     num_samples = protocol.params.numSamples
     
     bead_amt = (num_samples + 1)*25     #µl
@@ -125,7 +140,6 @@ def run(protocol: protocol_api.ProtocolContext):
     wash_buffer_amt = protocol.params.wash_buffer_amt       #ml
     digestion_buffer_stock_amt = protocol.params.digestion_buffer_stock_amt    #µl
     digestion_buffer_per_sample_amt = protocol.params.digestion_buffer_per_sample_amt       #100-150µl
-    num_washes = 3
     
     #loading
     tips1000 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot) for slot in ["A3","B3","C3"]]
@@ -186,8 +200,9 @@ def run(protocol: protocol_api.ProtocolContext):
         protocol.comment("\nAspriating supernatant to trash")
         for i in range (0, math.ceil(num_samples/8)):
             pipette.pick_up_tip()
-            pipette.aspirate(amt, reagent_plate['A' + str(i+1)].bottom(0.2), 0.9)
+            pipette.aspirate(amt, reagent_plate['A' + str(i+1)].bottom(0.1), 0.9)
             pipette.dispense(amt, trash1,5)
+            pipette.air_gap(volume=5)
             remove_tip(pipette, protocol.params.dry_run)
         # if math.floor(num_samples/8) <6:        # if 6 or more in a row use multi channel
         #     for i in range (0, math.floor(num_samples/8)):
@@ -216,14 +231,14 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("-------------Equilibration ---------------")
     protocol.comment("Vortex Mixing for 3 seconds")
     left_pipette.pick_up_tip()
-    left_pipette.mix(10, bead_amt-5, bead_storage.bottom(1))
+    left_pipette.mix(10, bead_amt-5, bead_storage.bottom(1), rate=0.75)
     
     protocol.comment("\nTransfering 25µl HILIC beads into well plate")
     for i in range (0, num_samples):
         if left_pipette.has_tip == False:
             left_pipette.pick_up_tip()
         if  (i +1)%6 == 0: # mix every 6 samples
-            left_pipette.mix(5, bead_amt-5, bead_storage.bottom(1), 1.5)
+            left_pipette.mix(5, bead_amt-5, bead_storage.bottom(1), rate=0.75)
         bead_amt -= 25
         left_pipette.aspirate(25, bead_storage.bottom(get_height_smalltube(bead_amt)))
         left_pipette.dispense(25, reagent_plate.wells()[i].bottom(2))
@@ -236,27 +251,37 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.delay(seconds=7, msg="waiting 7 seconds for microparticles to clear")
     aspirate_spuernatent_to_trash(right_pipette, 50)
     
-    protocol.comment("\nWashing and equilibrating the microparticles in 180µl Equilibration Buffer (2 times)")
+    protocol.comment("\nWashing and equilibrating the microparticles in "+str(wash_volume) + "µl Equilibration Buffer (2 times)")
     for i in range (0,num_washes):    
         protocol.comment("Wash number: "+  str(i+1))
         protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
         for i in range (0, math.ceil(num_samples/8)):
             right_pipette.pick_up_tip()
-            equilibartion_buffer_amt -= 0.18*8
+            equilibartion_buffer_amt -= wash_volume/1000 * 8#0.18*8
             # wet_tip(right_pipette, equilibration_buffer_storage[math.ceil(equilibartion_buffer_amt/11)-1].bottom(1))
-            right_pipette.aspirate(180, equilibration_buffer_storage[math.ceil(equilibartion_buffer_amt/11)-1].bottom(1))
-            right_pipette.air_gap(volume=3)
-            right_pipette.dispense(180, reagent_plate['A' + str(i+1)].bottom(2))
-            right_pipette.mix(4, 160, reagent_plate['A' + str(i+1)].bottom(2))
+            right_pipette.aspirate(wash_volume, equilibration_buffer_storage[math.ceil(equilibartion_buffer_amt/11)-1].bottom(1))
+            right_pipette.air_gap(volume=5)
+            right_pipette.dispense(wash_volume+5, reagent_plate['A' + str(i+1)].bottom(2))
+            right_pipette.mix(5, wash_volume, reagent_plate['A' + str(i+1)].bottom(2),2.5)
+            
+            # no bubbles
+            right_pipette.flow_rate.aspirate = 300
+            right_pipette.flow_rate.dispense = 500
+            right_pipette.aspirate(200, reagent_plate['A' + str(i+1)].bottom(1), rate = 0.25)
+            right_pipette.dispense(200, reagent_plate['A' + str(i+1)].top(), rate = 0.5)
+            right_pipette.aspirate(50, reagent_plate['A' + str(i+1)].bottom(), rate = 0.5)
+            right_pipette.dispense(50, reagent_plate['A' + str(i+1)].top(), rate = 1)
+
+            
             right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
             right_pipette.touch_tip()
             remove_tip(right_pipette, protocol.params.dry_run)
 
-        protocol.comment("Gentil agitation for 1 minute (1000rpm)")
+        protocol.comment("Gentil agitation for 1 minute ("+str(shake_speed)+"rpm)")
         hs_mod.open_labware_latch()
         protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
         hs_mod.close_labware_latch()
-        hs_mod.set_and_wait_for_shake_speed(1000)       #1000 rpm
+        hs_mod.set_and_wait_for_shake_speed(shake_speed)       #1000 rpm
         protocol.delay(seconds=7 if protocol.params.dry_run else 60, msg="1 minute incubation (10 seconds for dry run)")
         hs_mod.deactivate_shaker()
         hs_mod.open_labware_latch()
@@ -279,9 +304,19 @@ def run(protocol: protocol_api.ProtocolContext):
         binding_buffer_amt -= 0.025*8
         # wet_tip(right_pipette, binding_buffer_storage[math.ceil(binding_buffer_amt/11)-1].bottom(1))
         right_pipette.aspirate(25, binding_buffer_storage[math.ceil(binding_buffer_amt/11)-1].bottom(1))
-        right_pipette.air_gap(volume=3)
-        right_pipette.dispense(25, reagent_plate['A' + str(i+1)].bottom(2))
-        right_pipette.mix(7, 40, reagent_plate['A' + str(i+1)].bottom(2))
+        right_pipette.air_gap(volume=5)
+        right_pipette.dispense(25+5, reagent_plate['A' + str(i+1)].bottom(2))
+        right_pipette.mix(7, 50, reagent_plate['A' + str(i+1)].bottom(2))
+        
+        #no bubbles
+        right_pipette.flow_rate.aspirate = 300
+        right_pipette.flow_rate.dispense = 500
+        right_pipette.aspirate(50, reagent_plate['A' + str(i+1)].bottom(1), rate = 0.25)
+        right_pipette.dispense(50, reagent_plate['A' + str(i+1)].top(), rate = 0.5)
+        right_pipette.aspirate(6, reagent_plate['A' + str(i+1)].bottom(), rate = 0.5)
+        right_pipette.dispense(6, reagent_plate['A' + str(i+1)].top(), rate = 1)
+
+        
         right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
         right_pipette.touch_tip()
         remove_tip(right_pipette, protocol.params.dry_run)
@@ -291,7 +326,7 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
     hs_mod.close_labware_latch()
     protocol.pause('''"Put the lid on!!!" -O____________O''')
-    hs_mod.set_and_wait_for_shake_speed(1100)       #1100 rpm
+    hs_mod.set_and_wait_for_shake_speed(shake_speed)       #1100 rpm
     protocol.pause('''"Tell me when to stop!! (30 min incubation time)''')
     # protocol.delay(seconds=10 if protocol.params.dry_run else 1800, msg="30 minute incubation (10 seconds for dry run)")
     hs_mod.deactivate_shaker()
@@ -300,21 +335,21 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.delay(seconds=7, msg="waiting for beads to settle (20 sec)")
     aspirate_spuernatent_to_trash(right_pipette, 220)
     
-    protocol.comment("\nResuspend beads in 180µl wash buffer and mix thoroughly for 1 minute. times: " + str(num_washes))     # TO-DO: PUT THIS INTO A FRICKEN FUNCTION!
+    protocol.comment("\nResuspend beads in " + str(wash_volume) + "µl wash buffer and mix thoroughly for 1 minute. times: " + str(num_washes))     # TO-DO: PUT THIS INTO A FRICKEN FUNCTION!
     # protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     for i in range (0,num_washes):    
         protocol.comment("Resuspend number: "+  str(i+1))
         protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
         for i in range (0, math.ceil(num_samples/8)):
             right_pipette.pick_up_tip()
-            wash_buffer_amt -= 0.18*8
+            wash_buffer_amt -= wash_volume/1000*8
             # wet_tip(right_pipette,wash_buffer_storage[math.ceil(wash_buffer_amt/11)-1].bottom(2))
-            right_pipette.aspirate(180, wash_buffer_storage[math.ceil(wash_buffer_amt/11)-1].bottom(2))
-            right_pipette.air_gap(volume=3)
+            right_pipette.aspirate(wash_volume, wash_buffer_storage[math.ceil(wash_buffer_amt/11)-1].bottom(2))
+            right_pipette.air_gap(volume=5)
             right_pipette.flow_rate.aspirate = 3000
             right_pipette.flow_rate.dispense = 3000
-            right_pipette.dispense(180, reagent_plate['A' + str(i+1)].bottom(2))
-            right_pipette.mix(10, 190, reagent_plate['A' + str(i+1)].bottom(2))
+            right_pipette.dispense(wash_volume+5, reagent_plate['A' + str(i+1)].bottom(2))
+            right_pipette.mix(10, 180, reagent_plate['A' + str(i+1)].bottom(2))
            
             # no bubbles
             right_pipette.flow_rate.aspirate = 300
@@ -327,11 +362,11 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.touch_tip()
             remove_tip(right_pipette, protocol.params.dry_run)
 
-        protocol.comment("Gentil agitation for 1 minute (1300rpm)")
+        protocol.comment("Gentil agitation for 1 minute ("+str(shake_speed)+"rpm)")
         hs_mod.open_labware_latch()
         protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
         hs_mod.close_labware_latch()
-        hs_mod.set_and_wait_for_shake_speed(1300)       #1300 rpm
+        hs_mod.set_and_wait_for_shake_speed(shake_speed)       #1300 rpm
         protocol.delay(seconds=10 if protocol.params.dry_run else 60, msg="1 minute incubation (10 seconds for dry run)")
         hs_mod.deactivate_shaker()
         hs_mod.open_labware_latch()
@@ -347,17 +382,17 @@ def run(protocol: protocol_api.ProtocolContext):
         digestion_buffer_stock_amt -= digestion_buffer_per_sample_amt
         # wet_tip(left_pipette, digestion_buffer_storage.bottom(get_height_smalltube(digestion_buffer_stock_amt)))
         left_pipette.aspirate(digestion_buffer_per_sample_amt, digestion_buffer_storage.bottom(get_height_smalltube(digestion_buffer_stock_amt)))
-        left_pipette.air_gap(volume=3)
-        left_pipette.dispense(digestion_buffer_per_sample_amt, reagent_plate.wells()[i].bottom(2), 10)
+        left_pipette.air_gap(volume=5)
+        left_pipette.dispense(digestion_buffer_per_sample_amt+5, reagent_plate.wells()[i].bottom(2), 10)
         left_pipette.blow_out(reagent_plate.wells()[i].top())
         left_pipette.touch_tip()
         remove_tip(left_pipette, protocol.params.dry_run)
-    protocol.comment("\nIncubating sample at 37°C for 4 hours. Mix continuously at 1000 rpm")
+    protocol.comment("\nIncubating sample at 37°C for 4 hours. Mix continuously at "+str(shake_speed)+" rpm")
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
     hs_mod.close_labware_latch()
     protocol.pause('''"Put the lid on!!!" -O____________O''')
-    hs_mod.set_and_wait_for_shake_speed(1000)       #1000 rpm
+    hs_mod.set_and_wait_for_shake_speed(shake_speed)       #1000 rpm
     hs_mod.set_and_wait_for_temperature(37)         #37°C
     protocol.pause('''"Tell me when to stop!! (4hr incubation time)''')
     # protocol.delay(minutes=1/6 if protocol.params.dry_run else 240, msg="4 hour incubation at 37°C (10 seconds for dry run)")
