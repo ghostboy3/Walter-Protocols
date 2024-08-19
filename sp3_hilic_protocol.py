@@ -133,7 +133,7 @@ def run(protocol: protocol_api.ProtocolContext):
     num_washes = 3
     num_samples = protocol.params.numSamples
     
-    bead_amt = (num_samples + 1)*25     #µl
+    bead_amt = (num_samples)*25     #µl
     protein_sample_amt = protocol.params.protein_sample_amt     # amount of protein per sample (µl)
     equilibartion_buffer_amt = protocol.params.equilibartion_buffer_amt       #ml
     binding_buffer_amt = protocol.params.binding_buffer_amt       #ml
@@ -151,6 +151,7 @@ def run(protocol: protocol_api.ProtocolContext):
     tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A2", "stock and final solution rack")
     sample_tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A1", "sample stock rack")
     reagent_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B2", "reagent plate")
+    final_sample_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B1", "reagent plate")
     # buffer_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "B1", "reagent stock rack")   # equilibration, binding, and wash buffer
     working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "C2")
 
@@ -225,22 +226,33 @@ def run(protocol: protocol_api.ProtocolContext):
         #         pipette.dispense(amt, trash1,5)
         #         remove_tip(pipette, protocol.params.dry_run)
     
-    def wet_tip(pipette, location):
-        pipette.aspirate(50, location)
-        pipette.dispense(50, location)
+
     protocol.comment("-------------Equilibration ---------------")
     protocol.comment("Vortex Mixing for 3 seconds")
     left_pipette.pick_up_tip()
-    left_pipette.mix(10, bead_amt-5, bead_storage.bottom(1), rate=0.75)
+    left_pipette.flow_rate.aspirate = 100
+    left_pipette.flow_rate.dispense = 100
+
+    left_pipette.mix(3, bead_amt-7, bead_storage.bottom(1))
+    left_pipette.flow_rate.aspirate = 300
+    left_pipette.flow_rate.dispense = 500
     
     protocol.comment("\nTransfering 25µl HILIC beads into well plate")
     for i in range (0, num_samples):
         if left_pipette.has_tip == False:
             left_pipette.pick_up_tip()
-        if  (i +1)%6 == 0: # mix every 6 samples
-            left_pipette.mix(5, bead_amt-5, bead_storage.bottom(1), rate=0.75)
+        if  (i +1)%6 == 0 and i != 0: # mix every 6 samples
+            left_pipette.flow_rate.aspirate = 150
+            left_pipette.flow_rate.dispense = 150
+            left_pipette.mix(5, bead_amt-5, bead_storage.bottom(1), rate=0.5)
+            left_pipette.flow_rate.aspirate = 300
+            left_pipette.flow_rate.dispense = 500
         bead_amt -= 25
+        left_pipette.flow_rate.aspirate = 150
+        left_pipette.flow_rate.dispense = 150
         left_pipette.aspirate(25, bead_storage.bottom(get_height_smalltube(bead_amt)))
+        left_pipette.flow_rate.aspirate = 300
+        left_pipette.flow_rate.dispense = 500
         left_pipette.dispense(25, reagent_plate.wells()[i].bottom(2))
         left_pipette.blow_out(reagent_plate.wells()[i].top())
         left_pipette.touch_tip()
@@ -303,10 +315,10 @@ def run(protocol: protocol_api.ProtocolContext):
         right_pipette.pick_up_tip()
         binding_buffer_amt -= 0.025*8
         # wet_tip(right_pipette, binding_buffer_storage[math.ceil(binding_buffer_amt/11)-1].bottom(1))
-        right_pipette.aspirate(25, binding_buffer_storage[math.ceil(binding_buffer_amt/11)-1].bottom(1))
+        right_pipette.aspirate(protein_sample_amt, binding_buffer_storage[math.ceil(binding_buffer_amt/11)-1].bottom(1))
         right_pipette.air_gap(volume=5)
-        right_pipette.dispense(25+5, reagent_plate['A' + str(i+1)].bottom(2))
-        right_pipette.mix(7, 50, reagent_plate['A' + str(i+1)].bottom(2))
+        right_pipette.dispense(protein_sample_amt+5, reagent_plate['A' + str(i+1)].bottom(2))       # 1:1 ratio protein sample to digestion buffer
+        right_pipette.mix(7, protein_sample_amt*2, reagent_plate['A' + str(i+1)].bottom(2))
         
         #no bubbles
         right_pipette.flow_rate.aspirate = 300
@@ -406,7 +418,20 @@ def run(protocol: protocol_api.ProtocolContext):
     counter=len(tube_rack.wells())-1
     for i in range (0, num_samples):
         left_pipette.pick_up_tip()
-        left_pipette.aspirate(250, reagent_plate.wells()[i].bottom(0.25), 1.5)
+        left_pipette.aspirate(250, reagent_plate.wells()[i].bottom(0.2), 1.5)
+        left_pipette.dispense(250, final_sample_plate.wells()[i].bottom(0.25), 1.5)
+        # left_pipette.dispense(250, tube_rack.wells()[counter-i].bottom(0.5), 1.5)
+        left_pipette.blow_out(final_sample_plate.wells()[i].top())
+        left_pipette.touch_tip()
+        # left_pipette.return_tip()
+        remove_tip(left_pipette, protocol.params.dry_run)
+    protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
+    
+    protocol.move_labware(final_sample_plate, magnetic_block, use_gripper=True)
+    protocol.delay(seconds=20, msg="waiting for beads to settle (20 sec)")
+    for i in range (0, num_samples):
+        left_pipette.pick_up_tip()
+        left_pipette.aspirate(250, final_sample_plate.wells()[i].bottom(0.2), 1.5)
         left_pipette.dispense(250, tube_rack.wells()[counter-i].bottom(0.5), 1.5)
         left_pipette.blow_out(tube_rack.wells()[counter-i].top())
         left_pipette.touch_tip()

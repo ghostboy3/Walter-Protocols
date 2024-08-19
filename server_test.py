@@ -9,4 +9,4 @@ def send_command_to_raspberry_pi(command):
         print(f"{command} command sent successfully")
     else:
         print(f"Failed to send {command} command")
-send_command_to_raspberry_pi("start_vacuum")
+send_command_to_raspberry_pi("stop_vacuum")
