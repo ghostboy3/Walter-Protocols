@@ -34,7 +34,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="equilibartion_buffer_amt",
         display_name="equilibartion_buffer_amt",
         description="amount of equilibration buffer stock",
-        default=6,
+        default=5,
         minimum=1,
         maximum=30,
         unit="ml"
@@ -43,7 +43,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="binding_buffer_amt",
         display_name="binding_buffer_amt",
         description="amount of binding buffer stock",
-        default=6,
+        default=5,
         minimum=1,
         maximum=30,
         unit="ml"
@@ -52,7 +52,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="wash_buffer_amt",
         display_name="wash_buffer_amt",
         description="amount of wash buffer stock",
-        default=6,
+        default=5,
         minimum=1,
         maximum=30,
         unit="ml"
@@ -61,7 +61,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="digestion_buffer_stock_amt",
         display_name="digestion_buffer_stock_amt",
         description="amount of digestion buffer stock",
-        default=410,
+        default=200,
         minimum=1,
         maximum=1500,
         unit="ul"
@@ -97,7 +97,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="dry_run",
         display_name="Dry Run",
         description="Skip incubation delays and return tips.",
-        default=False
+        default=True
     )
 
 def get_height_smalltube(volume):
@@ -220,7 +220,7 @@ def run(protocol: protocol_api.ProtocolContext):
         protocol.comment("\nAspriating supernatant to trash")
         for i in range (0, math.ceil(num_samples/8)):
             pipette.pick_up_tip()
-            pipette.aspirate(amt, reagent_plate['A' + str(i+1)].bottom(0.1), 0.7)
+            pipette.aspirate(amt, reagent_plate['A' + str(i+1)].bottom(0.1), 0.9)
             pipette.air_gap(volume=10)
             pipette.dispense(amt+10, trash1,5)
             remove_tip(pipette, protocol.params.dry_run)
@@ -327,7 +327,6 @@ def run(protocol: protocol_api.ProtocolContext):
         left_pipette.pick_up_tip()
         left_pipette.aspirate(protein_sample_amt, sample_tube_rack.wells()[i].bottom(get_height_smalltube(25)))
         left_pipette.dispense(protein_sample_amt, reagent_plate.wells()[i].bottom(2))
-        left_pipette.mix(5, protein_sample_amt, reagent_plate.wells()[i].bottom(2))
         left_pipette.blow_out(reagent_plate.wells()[i].top())
         left_pipette.touch_tip()
         remove_tip(left_pipette, protocol.params.dry_run)
@@ -377,8 +376,8 @@ def run(protocol: protocol_api.ProtocolContext):
             # wet_tip(right_pipette,wash_buffer_storage[math.ceil(wash_buffer_amt/11)-1].bottom(2))
             right_pipette.aspirate(wash_volume, wash_buffer_storage[math.ceil(wash_buffer_amt/11)-1].bottom(2))
             right_pipette.air_gap(volume=5)
-            right_pipette.flow_rate.aspirate = 800
-            right_pipette.flow_rate.dispense = 900
+            right_pipette.flow_rate.aspirate = 300
+            right_pipette.flow_rate.dispense = 500
             right_pipette.dispense(wash_volume+5, reagent_plate['A' + str(i+1)].bottom(2))
             right_pipette.mix(10, 180, reagent_plate['A' + str(i+1)].bottom(2))
            
@@ -434,7 +433,7 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.pause('''Put the lid on!!!''')
     hs_mod.set_and_wait_for_shake_speed(shake_speed)       #1000 rpm
     hs_mod.set_and_wait_for_temperature(37)         #37°C
-    protocol.pause('''Tell me when to stop!! (4hr incubation time)''')
+    protocol.pause('''"Tell me when to stop!! (4hr incubation time)''')
     # protocol.delay(minutes=1/6 if protocol.params.dry_run else 240, msg="4 hour incubation at 37°C (10 seconds for dry run)")
     hs_mod.deactivate_shaker()
     hs_mod.deactivate_heater()
