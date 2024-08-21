@@ -170,10 +170,10 @@ def run(protocol: protocol_api.ProtocolContext):
     tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A2", "final solution rack")
     sample_tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A1", "sample stock rack")
     reagent_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B2", "reagent plate")
-    final_sample_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B1", "reagent plate")
+    # final_sample_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B1", "reagent plate")
     # buffer_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "B1", "reagent stock rack")   # equilibration, binding, and wash buffer
     working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "C2")
-    final_tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "D2", "final solution rack")
+    final_tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "B1", "final solution rack")
     
     #defining liquids
     bead_sol = protocol.define_liquid("HILIC Bead Solution", "An alloquat of the HILIC bead solution", "#000000")
@@ -443,27 +443,34 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("\nRecovering the microparticles on magnetic separator and aspirating the supernatant containing peptides with a pipette")
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     protocol.delay(seconds=bead_settle_time, msg="waiting for beads to settle (20 sec)")
-    # counter=len(tube_rack.wells())-1
+    counter=len(reagent_plate.wells())-1
     for i in range (0, num_samples):
         left_pipette.pick_up_tip()
         left_pipette.aspirate(250, reagent_plate.wells()[i].bottom(0.2), 1.5)
-        left_pipette.dispense(250, final_sample_plate.wells()[i].bottom(0.25), 1.5)
-        # left_pipette.dispense(250, tube_rack.wells()[counter-i].bottom(0.5), 1.5)
-        left_pipette.blow_out(final_sample_plate.wells()[i].top())
+        left_pipette.dispense(250, reagent_plate.wells()[counter-i].bottom(0.25), 1.5)
+        left_pipette.blow_out(reagent_plate.wells()[counter-i].top())
         left_pipette.touch_tip()
         # left_pipette.return_tip()
         remove_tip(left_pipette, protocol.params.dry_run)
-    protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
-
-    protocol.move_labware(final_sample_plate, magnetic_block, use_gripper=True)
-    protocol.delay(seconds=20, msg="waiting for beads to settle (20 sec)")
+    protocol.delay(seconds=20, msg="waiting for particles to settle")
     for i in range (0, num_samples):
         left_pipette.pick_up_tip()
-        left_pipette.aspirate(250, final_sample_plate.wells()[i].bottom(0.2), 1.5)
-        left_pipette.dispense(250, final_tube_rack.wells()[i].bottom(0.5), 1.5)
+        left_pipette.aspirate(250, reagent_plate.wells()[counter-i].bottom(0.15), rate=0.75)
+        left_pipette.dispense(250, final_tube_rack.wells()[i].bottom(0.25), rate=0.75)
         left_pipette.blow_out(final_tube_rack.wells()[i].top())
         left_pipette.touch_tip()
-        # left_pipette.return_tip()
         remove_tip(left_pipette, protocol.params.dry_run)
-        # left_pipette.transfer(120, new_vessel.wells()[i].bottom(0.25), tube_rack.wells()[counter-1].bottom(0.5), blow_out=True,touch_tip=True,blowout_location="destination well", trash=False)
-        # counter -= 1
+    # protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
+
+    # protocol.move_labware(final_sample_plate, magnetic_block, use_gripper=True)
+    # protocol.delay(seconds=20, msg="waiting for beads to settle (20 sec)")
+    # for i in range (0, num_samples):
+    #     left_pipette.pick_up_tip()
+    #     left_pipette.aspirate(250, final_sample_plate.wells()[i].bottom(0.2), 1.5)
+    #     left_pipette.dispense(250, final_tube_rack.wells()[i].bottom(0.5), 1.5)
+    #     left_pipette.blow_out(final_tube_rack.wells()[i].top())
+    #     left_pipette.touch_tip()
+    #     # left_pipette.return_tip()
+    #     remove_tip(left_pipette, protocol.params.dry_run)
+    #     # left_pipette.transfer(120, new_vessel.wells()[i].bottom(0.25), tube_rack.wells()[counter-1].bottom(0.5), blow_out=True,touch_tip=True,blowout_location="destination well", trash=False)
+    #     # counter -= 1
