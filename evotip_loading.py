@@ -36,7 +36,7 @@ def add_parameters(parameters: protocol_api.Parameters):
     )
 
 def send_command_to_raspberry_pi(command):
-    url = "http://10.197.116.85:5000/command"
+    url = "http://10.197.116.132:5000/command"
     data = {"command": command}
     data_encoded = json.dumps(data).encode('utf-8')
     
@@ -62,7 +62,7 @@ def run(protocol: protocol_api.ProtocolContext):
     vacuum_box = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "C3", "reagent plate")
     vacuum_box.set_offset(x=0, y=0, z=protocol.params.offset)
     solvent_reservoir = protocol.load_labware("nest_1_reservoir_195ml", "C2", "solvent reservoir")
-    
+
     # testing the location
     left_pipette.pick_up_tip()
     for i in range (0, math.ceil(num_samples/8)):
@@ -70,7 +70,7 @@ def run(protocol: protocol_api.ProtocolContext):
         left_pipette.dispense(10, vacuum_box.wells()[i].top(), rate=3)
         left_pipette.blow_out()
         send_command_to_raspberry_pi("start_vacuum")
-        protocol.delay(seconds=3)
+        protocol.delay(seconds=20, msg="Vacuum is on!!")
         send_command_to_raspberry_pi("stop_vacuum")
     
     left_pipette.return_tip()

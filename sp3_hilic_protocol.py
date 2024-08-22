@@ -79,7 +79,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="wash_volume",
         display_name="wash volume",
         description="of buffer the samples are going to be washed in",
-        default=130,
+        default=100,
         minimum=1,
         maximum=200,
         unit="ul"
@@ -150,7 +150,7 @@ def run(protocol: protocol_api.ProtocolContext):
     shake_speed = protocol.params.shake_speed   #rpm
     num_washes = 3
     num_samples = protocol.params.numSamples
-    bead_settle_time = 10 #seconds
+    bead_settle_time = 15 #seconds
     
     bead_amt = (num_samples)*25     #µl
     protein_sample_amt = protocol.params.protein_sample_amt     # amount of protein per sample (µl)
@@ -377,10 +377,10 @@ def run(protocol: protocol_api.ProtocolContext):
             # wet_tip(right_pipette,wash_buffer_storage[math.ceil(wash_buffer_amt/11)-1].bottom(2))
             right_pipette.aspirate(wash_volume, wash_buffer_storage[math.ceil(wash_buffer_amt/11)-1].bottom(2))
             right_pipette.air_gap(volume=5)
-            right_pipette.flow_rate.aspirate = 800
-            right_pipette.flow_rate.dispense = 900
+            right_pipette.flow_rate.aspirate = 1200
+            right_pipette.flow_rate.dispense = 1200
             right_pipette.dispense(wash_volume+5, reagent_plate['A' + str(i+1)].bottom(2))
-            right_pipette.mix(10, 180, reagent_plate['A' + str(i+1)].bottom(2))
+            right_pipette.mix(13, 95, reagent_plate['A' + str(i+1)].bottom(2))
            
             # no bubbles
             right_pipette.flow_rate.aspirate = 300
@@ -419,10 +419,10 @@ def run(protocol: protocol_api.ProtocolContext):
         #no bubbles
         left_pipette.flow_rate.aspirate = 300
         left_pipette.flow_rate.dispense = 500
-        left_pipette.aspirate(160, reagent_plate['A' + str(i+1)].bottom(1), rate = 0.25)
-        left_pipette.dispense(160, reagent_plate['A' + str(i+1)].top(), rate = 0.5)
-        left_pipette.aspirate(6, reagent_plate['A' + str(i+1)].bottom(), rate = 0.5)
-        left_pipette.dispense(6, reagent_plate['A' + str(i+1)].top(), rate = 0.75)
+        left_pipette.aspirate(160, reagent_plate.wells()[i].bottom(1), rate = 0.25)
+        left_pipette.dispense(160, reagent_plate.wells()[i].top(), rate = 0.5)
+        left_pipette.aspirate(6, reagent_plate.wells()[i].bottom(), rate = 0.5)
+        left_pipette.dispense(6, reagent_plate.wells()[i].top(), rate = 0.75)
 
         left_pipette.blow_out(reagent_plate.wells()[i].top())
         left_pipette.touch_tip()

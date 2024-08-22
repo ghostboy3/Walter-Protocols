@@ -6,7 +6,7 @@ import math
 metadata = {
     "protocolName": "Pre EvoTip pipetting",
     "author": "Nico To",
-    "description": "Automating the pipetting for evotip loading",
+    "description": "Automating the pipetting for evotip loading.",
 }
 requirements = {"robotType": "Flex", "apiLevel": "2.19"}
 
@@ -91,7 +91,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="resuspend_amt",
         display_name="Resuspend Amount",
         description="Amout of buffer that peptides are resuspended in or amount of buffer walt should resuspend in",
-        default=80,
+        default=15,
         minimum=1,
         maximum=1500,
         unit="µl"
@@ -153,16 +153,17 @@ def run(protocol: protocol_api.ProtocolContext):
             for i in range (0, num_samples):
                 amount_of_buffer_remaining-= sample_in_solution_amt
                 get_pipette(sample_stock_amt).pick_up_tip()
-                get_pipette(sample_stock_amt).aspirate(sample_stock_amt, reagent_stock_storage.bottom(get_height_falcon(amount_of_buffer_remaining)-2))
+                get_pipette(sample_stock_amt).aspirate(sample_stock_amt, reagent_stock_storage.bottom(get_height_falcon(amount_of_buffer_remaining)+1))
                 get_pipette(sample_stock_amt).dispense(sample_stock_amt, sample_rack.wells()[i].bottom(1))
-                get_pipette(sample_stock_amt).mix(12, sample_stock_amt-3,sample_rack.wells()[i].bottom(1),2)
+                # get_pipette(sample_stock_amt).mix(12, sample_stock_amt-3,sample_rack.wells()[i].bottom(1),2)
+                get_pipette(sample_stock_amt).mix(3, sample_stock_amt-3,sample_rack.wells()[i].bottom(1),2)
                 remove_tip(get_pipette(sample_stock_amt), protocol.params.dry_run)
         #loading sample
         right_pipette.pick_up_tip()
         protocol.comment("\n\n" + str(get_height_smalltube(sample_stock_amt-sample_in_solution_amt)) + "\n\n")
         protocol.comment("\n\n" + str(sample_stock_amt-sample_in_solution_amt) + "\n\n")
 
-        right_pipette.aspirate(sample_in_solution_amt, sample_rack.wells()[i].bottom(get_height_smalltube(sample_stock_amt-sample_in_solution_amt)))
+        right_pipette.aspirate(sample_in_solution_amt, sample_rack.wells()[i].bottom(0.1))#get_height_smalltube(sample_stock_amt-sample_in_solution_amt)))
         right_pipette.dispense(sample_in_solution_amt, solution_rack.wells()[i])
         right_pipette.blow_out(solution_rack.wells()[i].top())
         right_pipette.touch_tip()
@@ -172,7 +173,7 @@ def run(protocol: protocol_api.ProtocolContext):
         #loading buffer
         amount_of_buffer_remaining -= buffer_in_solution_amt       # in ml
         left_pipette.pick_up_tip()
-        left_pipette.aspirate(buffer_in_solution_amt, reagent_stock_storage.bottom(get_height_falcon((amount_of_buffer_remaining))-2))
+        left_pipette.aspirate(buffer_in_solution_amt, reagent_stock_storage.bottom(get_height_falcon((amount_of_buffer_remaining))+1))
         left_pipette.dispense(buffer_in_solution_amt, solution_rack.wells()[i])
         left_pipette.blow_out(solution_rack.wells()[i].top())
         left_pipette.flow_rate.aspirate = slow_aspirate_speed
