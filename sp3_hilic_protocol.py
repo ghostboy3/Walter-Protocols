@@ -260,16 +260,16 @@ def run(protocol: protocol_api.ProtocolContext):
     for i in range (0, num_samples):
         if left_pipette.has_tip == False:
             left_pipette.pick_up_tip()
-        if  (i +1)%6 == 0 and i != 0: # mix every 6 samples
+        if  i != 0: # mix every 6 samples
             left_pipette.flow_rate.aspirate = 150
             left_pipette.flow_rate.dispense = 150
-            left_pipette.mix(5, bead_amt-5, bead_storage.bottom(1), rate=0.5)
+            left_pipette.mix(3, bead_amt-5, bead_storage.bottom(1), rate=0.5)
             left_pipette.flow_rate.aspirate = 300
             left_pipette.flow_rate.dispense = 500
         bead_amt -= 25
         left_pipette.flow_rate.aspirate = 150
         left_pipette.flow_rate.dispense = 150
-        left_pipette.aspirate(25, bead_storage.bottom(get_height_smalltube(bead_amt)))
+        left_pipette.aspirate(25, bead_storage.bottom(0.5))
         left_pipette.dispense(25, reagent_plate.wells()[i].bottom(2))
         left_pipette.flow_rate.aspirate = 300
         left_pipette.flow_rate.dispense = 500
@@ -298,8 +298,8 @@ def run(protocol: protocol_api.ProtocolContext):
             # no bubbles
             right_pipette.flow_rate.aspirate = 300
             right_pipette.flow_rate.dispense = 500
-            right_pipette.aspirate(200, reagent_plate['A' + str(i+1)].bottom(1), rate = 0.25)
-            right_pipette.dispense(200, reagent_plate['A' + str(i+1)].top(), rate = 0.5)
+            right_pipette.aspirate(100, reagent_plate['A' + str(i+1)].bottom(1), rate = 0.25)
+            right_pipette.dispense(100, reagent_plate['A' + str(i+1)].top(), rate = 0.5)
             right_pipette.aspirate(50, reagent_plate['A' + str(i+1)].bottom(), rate = 0.5)
             right_pipette.dispense(50, reagent_plate['A' + str(i+1)].top(), rate = 1)
 
@@ -385,8 +385,8 @@ def run(protocol: protocol_api.ProtocolContext):
             # no bubbles
             right_pipette.flow_rate.aspirate = 300
             right_pipette.flow_rate.dispense = 500
-            right_pipette.aspirate(200, reagent_plate['A' + str(i+1)].bottom(1), rate = 0.25)
-            right_pipette.dispense(200, reagent_plate['A' + str(i+1)].top(), rate = 0.5)
+            right_pipette.aspirate(100, reagent_plate['A' + str(i+1)].bottom(1), rate = 0.25)
+            right_pipette.dispense(100, reagent_plate['A' + str(i+1)].top(), rate = 0.5)
             right_pipette.aspirate(50, reagent_plate['A' + str(i+1)].bottom(), rate = 0.5)
             right_pipette.dispense(50, reagent_plate['A' + str(i+1)].top(), rate = 1)
             right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
@@ -419,8 +419,8 @@ def run(protocol: protocol_api.ProtocolContext):
         #no bubbles
         left_pipette.flow_rate.aspirate = 300
         left_pipette.flow_rate.dispense = 500
-        left_pipette.aspirate(160, reagent_plate.wells()[i].bottom(1), rate = 0.25)
-        left_pipette.dispense(160, reagent_plate.wells()[i].top(), rate = 0.5)
+        left_pipette.aspirate(100, reagent_plate.wells()[i].bottom(1), rate = 0.25)
+        left_pipette.dispense(100, reagent_plate.wells()[i].top(), rate = 0.5)
         left_pipette.aspirate(6, reagent_plate.wells()[i].bottom(), rate = 0.5)
         left_pipette.dispense(6, reagent_plate.wells()[i].top(), rate = 0.75)
 
@@ -455,9 +455,9 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.delay(seconds=20, msg="waiting for particles to settle")
     for i in range (0, num_samples):
         left_pipette.pick_up_tip()
-        left_pipette.aspirate(250, reagent_plate.wells()[counter-i].bottom(0.15), rate=0.75)
-        left_pipette.dispense(250, final_tube_rack.wells()[i].bottom(0.25), rate=0.75)
-        left_pipette.blow_out(final_tube_rack.wells()[i].top())
+        left_pipette.aspirate(110, reagent_plate.wells()[counter-i].bottom(0.15), rate=0.75)
+        left_pipette.dispense(110, final_tube_rack.wells()[i].bottom(0.25), rate=0.75)
+        left_pipette.blow_out(final_tube_rack.wells()[i].bottom(10))
         left_pipette.touch_tip()
         remove_tip(left_pipette, protocol.params.dry_run)
     # protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
