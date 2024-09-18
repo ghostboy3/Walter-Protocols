@@ -27,6 +27,7 @@ def get_height_smalltube(volume):
     Volume: amount of liquid in 1.5ml tube in µL
     Returns height in mm from the bottom of tube that pipette should go to
     '''  
+    return(0.5)
     # volume = volume/1000
     if volume <= 500:     # cone part aaa
         volume = volume/1000
@@ -34,6 +35,7 @@ def get_height_smalltube(volume):
 
     elif volume > 500:
         return 0.015*volume+11.5-1
+    
 def add_parameters(parameters: protocol_api.Parameters):
 
     parameters.add_float(
@@ -91,7 +93,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="resuspend_amt",
         display_name="Resuspend Amount",
         description="Amout of buffer that peptides are resuspended in or amount of buffer walt should resuspend in",
-        default=15,
+        default=80,
         minimum=1,
         maximum=1500,
         unit="µl"
@@ -147,17 +149,25 @@ def run(protocol: protocol_api.ProtocolContext):
             pipette.drop_tip(chute)  
     amount_of_buffer_remaining = buffer_stock_amt*1000
 
+    #respspending peptides
+    if protocol.params.resuspend:
+        for i in range (0, num_samples):
+            amount_of_buffer_remaining-= sample_in_solution_amt
+            get_pipette(sample_stock_amt).pick_up_tip()
+            get_pipette(sample_stock_amt).aspirate(sample_stock_amt, reagent_stock_storage.bottom(get_height_falcon(amount_of_buffer_remaining)+1))
+            get_pipette(sample_stock_amt).dispense(sample_stock_amt, sample_rack.wells()[i].bottom(1))
+            # get_pipette(sample_stock_amt).mix(12, sample_stock_amt-3,sample_rack.wells()[i].bottom(1),2)
+            get_pipette(sample_stock_amt).mix(3, sample_stock_amt-3,sample_rack.wells()[i].bottom(1),1)
+            
+            get_pipette(sample_stock_amt).aspirate(sample_stock_amt, sample_rack.wells()[i].bottom(1), rate = 0.5)
+            get_pipette(sample_stock_amt).dispense(sample_stock_amt, sample_rack.wells()[i].bottom(5), rate = 0.5)
+            
+            get_pipette(sample_stock_amt).blow_out(sample_rack.wells()[i].top())
+            remove_tip(get_pipette(sample_stock_amt), protocol.params.dry_run)
+
+    protocol.comment("--------Resuspension done----------")
+
     for i in range (0, num_samples):
-        #respspending peptides
-        if protocol.params.resuspend:
-            for i in range (0, num_samples):
-                amount_of_buffer_remaining-= sample_in_solution_amt
-                get_pipette(sample_stock_amt).pick_up_tip()
-                get_pipette(sample_stock_amt).aspirate(sample_stock_amt, reagent_stock_storage.bottom(get_height_falcon(amount_of_buffer_remaining)+1))
-                get_pipette(sample_stock_amt).dispense(sample_stock_amt, sample_rack.wells()[i].bottom(1))
-                # get_pipette(sample_stock_amt).mix(12, sample_stock_amt-3,sample_rack.wells()[i].bottom(1),2)
-                get_pipette(sample_stock_amt).mix(3, sample_stock_amt-3,sample_rack.wells()[i].bottom(1),2)
-                remove_tip(get_pipette(sample_stock_amt), protocol.params.dry_run)
         #loading sample
         right_pipette.pick_up_tip()
         protocol.comment("\n\n" + str(get_height_smalltube(sample_stock_amt-sample_in_solution_amt)) + "\n\n")

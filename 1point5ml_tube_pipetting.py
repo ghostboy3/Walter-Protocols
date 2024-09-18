@@ -91,27 +91,28 @@ def run(protocol):
     sample_in_solution_amt = protocol.params.sample_in_solution_amt    # amount of sample that goes into each solution in microlitres
     num_samples = protocol.params.num_samples
     
-    # tips1000 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot) for slot in ["A3"]]   # add more later
-    tips50 = [protocol.load_labware("opentrons_flex_96_filtertiprack_50uL", slot) for slot in ["A3"]]   # add more later
+    # tips50 = [protocol.load_labware("opentrons_flex_96_filtertiprack_50uL", slot) for slot in ["A3"]]   # add more later
+    tips1000 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot) for slot in ["A3"]]   # add more later
     trash = protocol.load_waste_chute()
 
-    left_pipette = protocol.load_instrument("flex_1channel_50", "left", tip_racks=tips50)
-    right_pipette = protocol.load_instrument("flex_8channel_50", "right", tip_racks=tips50)
+    left_pipette = protocol.load_instrument("flex_1channel_1000", "left", tip_racks=tips1000)
+    # right_pipette = protocol.load_instrument("flex_8channel_50", "right", tip_racks=tips50)
     
     tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "D2", "tube rack")
     # tube_rack["A1"].load_liquid(sample_sol, protocol.params.sample_stock_amt)
     sample_stock = tube_rack["D1"]
     amount_of_sample_remaining = protocol.params.sample_stock_amt
-    right_pipette.pick_up_tip()
+    left_pipette.pick_up_tip()
     for i in range (0, num_samples):
         amount_of_sample_remaining -= sample_in_solution_amt
         # protocol.comment("AAAAAAAAAA: " + str(get_height(amount_of_sample_remaining)))
         # print("AAAAAAAAAA: " + str(get_height(amount_of_sample_remaining)))
         protocol.comment("VOLUME: " + str(amount_of_sample_remaining))
-        right_pipette.aspirate(sample_in_solution_amt, sample_stock.bottom(get_height(amount_of_sample_remaining)))
+        left_pipette.aspirate(sample_in_solution_amt, sample_stock.bottom(get_height(amount_of_sample_remaining)))
         # right_pipette.aspirate(sample_in_solution_amt, sample_stock.bottom(10))
-        right_pipette.dispense(sample_in_solution_amt, tube_rack["D2"].top())
-        right_pipette.blow_out(tube_rack["D2"].top())
+        left_pipette.dispense(sample_in_solution_amt, tube_rack["D2"].top())
+        left_pipette.blow_out(tube_rack["D2"].top())
     # send_command_to_raspberry_pi('start_experiment')
 
-    right_pipette.return_tip()
+    left_pipette.return_tip()
+
