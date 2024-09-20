@@ -251,9 +251,9 @@ def run(protocol: protocol_api.ProtocolContext):
         protocol.comment("\nAspriating supernatant to trash")
         for i in range (0, math.ceil(num_samples/8)):
             pipette.pick_up_tip()
-            pipette.aspirate(amt, reagent_plate['A' + str(i+1)].bottom(0.1), 0.7)
-            pipette.air_gap(volume=10)
-            pipette.dispense(amt+10, trash1,5)
+            pipette.aspirate(amt, reagent_plate['A' + str(i+1)].bottom(0.1), 0.4)
+            # pipette.air_gap(volume=10)
+            pipette.dispense(amt, trash1,5)
             remove_tip(pipette, protocol.params.dry_run)
     
     if protocol.params.manual_load_beads:
@@ -290,11 +290,11 @@ def run(protocol: protocol_api.ProtocolContext):
         
     protocol.comment("\nPlacing tube on magnetic separator and allowing 10s for microparticles to clear")
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
-    protocol.delay(seconds=bead_settle_time, msg="waiting 7 seconds for microparticles to clear")
+    protocol.delay(seconds=bead_settle_time+5, msg="waiting 7 seconds for microparticles to clear")
     aspirate_spuernatent_to_trash(right_pipette, 50)
     
     protocol.comment("\nWashing and equilibrating the microparticles in "+str(wash_volume) + "µl Equilibration Buffer (2 times)")
-    for i in range (0,num_washes):    
+    for i in range (0,num_washes):
         protocol.comment("Wash number: "+  str(i+1))
         protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
         for i in range (0, math.ceil(num_samples/8)):
@@ -328,8 +328,8 @@ def run(protocol: protocol_api.ProtocolContext):
         hs_mod.deactivate_shaker()
         hs_mod.open_labware_latch()
         protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
-        protocol.delay(seconds=bead_settle_time, msg="waiting for beads to settle (20 sec)")
-        aspirate_spuernatent_to_trash(right_pipette, 220)
+        protocol.delay(seconds=bead_settle_time+5, msg="waiting for beads to settle (20 sec)")
+        aspirate_spuernatent_to_trash(right_pipette, wash_volume+20)
     protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     
     protocol.comment("\n\n---------------Protein Binding Procedure------------------")
@@ -364,19 +364,18 @@ def run(protocol: protocol_api.ProtocolContext):
         remove_tip(right_pipette, protocol.params.dry_run)
     
     protocol.comment("\nAllow proteins to bind to microparticles for 30 min. Mix gently and continuously")
-    send_email("Time to put the lid on for the 30min binding.")
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
     hs_mod.close_labware_latch()
-    protocol.pause('''"Put the lid on!!!" -O____________O''')
+    # protocol.pause('''"Put the lid on!!!" -O____________O''')
     hs_mod.set_and_wait_for_shake_speed(1450)       #1100 rpm
-    protocol.pause('''"Tell me when to stop!! (30 min incubation time)''')
-    # protocol.delay(seconds=10 if protocol.params.dry_run else 1800, msg="30 minute incubation (10 seconds for dry run)")
+    # protocol.pause('''"Tell me when to stop!! (30 min incubation time)''')
+    protocol.delay(seconds=10 if protocol.params.dry_run else 1800, msg="30 minute incubation (10 seconds for dry run)")
     hs_mod.deactivate_shaker()
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     protocol.delay(seconds=bead_settle_time, msg="waiting for beads to settle (20 sec)")
-    aspirate_spuernatent_to_trash(right_pipette, 220)
+    aspirate_spuernatent_to_trash(right_pipette, wash_volume+20)
     
     protocol.comment("\nResuspend beads in " + str(wash_volume) + "µl wash buffer and mix thoroughly for 1 minute. times: " + str(num_washes))     # TO-DO: PUT THIS INTO A FRICKEN FUNCTION!
     # protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
@@ -415,7 +414,7 @@ def run(protocol: protocol_api.ProtocolContext):
         hs_mod.open_labware_latch()
         protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
         protocol.delay(seconds=bead_settle_time, msg="waiting for beads to settle (20 sec)")
-        aspirate_spuernatent_to_trash(right_pipette, 220)
+        aspirate_spuernatent_to_trash(right_pipette, wash_volume+20)
     protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
 
     protocol.comment("\n\n--------------------Protein Digestion Procedure-----------------------")
