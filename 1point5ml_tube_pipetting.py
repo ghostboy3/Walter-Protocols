@@ -58,35 +58,47 @@ def run(protocol):
         Return: hieght from bottom of tube in millimeters
         '''
         height = 1
-        # volume = volume/1000
-        if volume <= 500 and volume >= 250:     # cone part aaa
-            volume = volume/1000
-            height = -26.8*(volume**2)+45.1*volume+3.98-5 #−26.80x2 +45.10x+3.98
-            protocol.comment("1: " + str(height))
-        elif volume <= 250 and volume >= 35:     # cone part aaa
-            volume = volume/1000
-            height = -26.8*(volume**2)+45.1*volume+3.9-3.5 #−26.80x2 +45.10x+3.98
-            protocol.comment("2: " + str(height))
-        elif volume <= 35 and volume >= 15:     # cone part aaa
-            volume = volume/1000
-            height = -26.8*(volume**2)+45.1*volume+3.9-4.5 #−26.80x2 +45.10x+3.98
-            protocol.comment("3: " + str(height))
-        elif volume <= 15 and volume >= 0:     # cone part aaa
-            volume = volume/1000
-            height = -26.8*(volume**2)+45.1*volume+3.9-5.5 #−26.80x2 +45.10x+3.98
-            protocol.comment("4: " + str(height))
+        # return 0.1
+        
+        #cylinder part
+        if volume > 750:
+            height= 0.015*volume+11.5-4
+            protocol.comment("6: " + str(height))
+            # return height
+
         elif volume > 500 and volume < 750:
             height= 0.015*volume+11.5-5
             protocol.comment("5: " + str(height))
-        elif volume > 750:
-            height= 0.015*volume+11.5-4
-            protocol.comment("6: " + str(height))
-
-        if height < 0.1 or volume <=5: 
-            protocol.comment("\n\n" + str(volume)+"   aaaaaaaaaaaaaaaaaaaaaaaa    " + str(height)+"\n\n")
-            return 0.1
-        else:
-            return height
+            # return height
+        if volume <= 500 and volume >= 250:     # cone part aaa
+            volume = volume/1000
+            height = -26.8*(volume**2)+45.1*volume+3.98 #−26.80x2 +45.10x+3.98
+            protocol.comment("1: " + str(height))
+    
+        # volume = volume/1000
+        # if volume <= 500 and volume >= 250:     # cone part aaa
+        #     volume = volume/1000
+        #     height = -26.8*(volume**2)+45.1*volume+3.98-5 #−26.80x2 +45.10x+3.98
+        #     protocol.comment("1: " + str(height))
+        # elif volume <= 250 and volume >= 35:     # cone part aaa
+        #     volume = volume/1000
+        #     height = -26.8*(volume**2)+45.1*volume+3.9-3.5 #−26.80x2 +45.10x+3.98
+        #     protocol.comment("2: " + str(height))
+        # elif volume <= 35 and volume >= 15:     # cone part aaa
+        #     volume = volume/1000
+        #     height = -26.8*(volume**2)+45.1*volume+3.9-4.5 #−26.80x2 +45.10x+3.98
+        #     protocol.comment("3: " + str(height))
+        # elif volume <= 15 and volume >= 0:     # cone part aaa
+        #     volume = volume/1000
+        #     height = -26.8*(volume**2)+45.1*volume+3.9-5.5 #−26.80x2 +45.10x+3.98
+        #     protocol.comment("4: " + str(height))
+            
+    
+        # if height < 0.1 or volume <=5: 
+        #     protocol.comment("\n\n" + str(volume)+"   aaaaaaaaaaaaaaaaaaaaaaaa    " + str(height)+"\n\n")
+        #     return 0.1
+        # else:
+        #     return height
         
     sample_in_solution_amt = protocol.params.sample_in_solution_amt    # amount of sample that goes into each solution in microlitres
     num_samples = protocol.params.num_samples
