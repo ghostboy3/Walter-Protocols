@@ -294,8 +294,8 @@ def run(protocol: protocol_api.ProtocolContext):
     aspirate_spuernatent_to_trash(right_pipette, 50, 0.6)
     
     protocol.comment("\nWashing and equilibrating the microparticles in "+str(wash_volume) + "µl Equilibration Buffer (2 times)")
-    for wash_num in range (0,num_washes):
-        protocol.comment("Wash number: "+  str(i+1))
+    for wash_num in range (0,num_washes):     # all washes before the last wash with EQ buffer
+        protocol.comment("Wash number: "+  str(wash_num+1))
         protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
         for i in range (0, math.ceil(num_samples/8)):
             right_pipette.pick_up_tip()
@@ -329,14 +329,14 @@ def run(protocol: protocol_api.ProtocolContext):
         hs_mod.open_labware_latch()
         protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
         protocol.delay(seconds=bead_settle_time+5, msg="waiting for beads to settle (20 sec)")
-        if wash_num == 0:
-            aspirate_spuernatent_to_trash(right_pipette, wash_volume, 0.1)
-        else:
-            aspirate_spuernatent_to_trash(right_pipette, wash_volume+20, 0.5)
-    protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
+        if wash_num != num_washes:      # Not on the last wash yet
+            if wash_num == 0:
+                aspirate_spuernatent_to_trash(right_pipette, wash_volume, 0.1)
+            else:
+                aspirate_spuernatent_to_trash(right_pipette, wash_volume+20, 0.5)
+    # protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
     
-    protocol.comment("\n\n---------------Protein Binding Procedure------------------")
-    protocol.comment("\nAdding 25µl sample and 25µl binding buffer to beads")
+    protocol.comment("\n\n---------------Protein Binding Procedure------------------\n\n\n\n")
     protocol.comment("\nAdding 30µl binding buffer to 30µl protein sample")
     for i in range (0, num_samples):
         left_pipette.pick_up_tip()
@@ -345,17 +345,50 @@ def run(protocol: protocol_api.ProtocolContext):
         left_pipette.mix(2, 50, sample_tube_rack.wells()[i].bottom(0.5), rate=0.3)
         # left_pipette.blow_out(reagent_plate.wells()[i].top())
         # left_pipette.touch_tip()
-        binding_buffer_amt -= 30
+        binding_buffer_amt -= 30/1000
         remove_tip(left_pipette, protocol.params.dry_run)
-    for i in range (0, num_samples):
+    protocol.comment("\nAdding binding buffer and protein sample to well plate")
+    well_counter = 0
+    for i in range (0, math.floor(num_samples/8)):
+        #aspirate row to trash
+        right_pipette.pick_up_tip()
+        right_pipette.aspirate(wash_volume+20, reagent_plate['A' + str(i+1)].bottom(0.1), rate=0.5)
+        right_pipette.dispense(wash_volume+20, trash1,5)
+        remove_tip(right_pipette, protocol.params.dry_run)
+        
+        for i in range (0, 8):
+            left_pipette.pick_up_tip()
+            left_pipette.aspirate(50, sample_tube_rack.wells()[well_counter].bottom(0.5))
+            left_pipette.dispense(50, reagent_plate.wells()[well_counter].bottom(0.2))
+            left_pipette.mix(7, 50, sample_tube_rack.wells()[well_counter].bottom(0.5))
+            left_pipette.blow_out(reagent_plate.wells()[well_counter].top())
+            left_pipette.touch_tip()
+            remove_tip(left_pipette, protocol.params.dry_run)
+            well_counter += 1
+    for i in range(0, num_samples%8):
+        #aspirate buffer to trash
         left_pipette.pick_up_tip()
-        left_pipette.aspirate(50, sample_tube_rack.wells()[i].bottom(0.5))
-        left_pipette.dispense(50, reagent_plate.wells()[i].bottom(0.2))
-        left_pipette.mix(7, 50, sample_tube_rack.wells()[i].bottom(0.5))
-        left_pipette.blow_out(reagent_plate.wells()[i].top())
+        left_pipette.aspirate(wash_volume+20, reagent_plate.wells()[well_counter].bottom(0.1), rate=0.5)
+        left_pipette.dispense(wash_volume+20, trash1,5)
+        remove_tip(left_pipette, protocol.params.dry_run)
+        #adding buffer + sample
+        left_pipette.pick_up_tip()
+        left_pipette.aspirate(50, sample_tube_rack.wells()[well_counter].bottom(0.5))
+        left_pipette.dispense(50, reagent_plate.wells()[well_counter].bottom(0.2))
+        left_pipette.mix(7, 50, sample_tube_rack.wells()[well_counter].bottom(0.5))
+        left_pipette.blow_out(reagent_plate.wells()[well_counter].top())
         left_pipette.touch_tip()
         remove_tip(left_pipette, protocol.params.dry_run)
+        well_counter += 1
 
+    protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
+    protocol.comment("\nmixing protein+binding buffer with beads")
+    for i in range (0, math.ceil(num_samples/8)):
+        right_pipette.pick_up_tip()
+        right_pipette.mix(7, 55, reagent_plate['A' + str(i+1)].bottom(0.5))
+        right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
+        right_pipette.touch_tip()
+        remove_tip(right_pipette, protocol.params.dry_run)
 
     protocol.comment("\nAllow proteins to bind to microparticles for 30 min. Mix gently and continuously")
     hs_mod.open_labware_latch()
