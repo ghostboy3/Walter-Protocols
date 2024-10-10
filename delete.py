@@ -1,23 +1,37 @@
-def get_height(volume):
-    '''
-    Get's the height of the liquid in the tube
-    Volume: volume of liquid in tube in µl
-    Return: hieght from bottom of tube in millimeters
-    '''
-    height = 1
-    # return 0.1
-    
-    #cylinder part
-    if volume > 500:
-        height= 0.015*volume+11.5
-        # return height
+from opentrons import protocol_api
+from opentrons.protocol_api import PARTIAL_COLUMN, ALL, SINGLE
 
-    elif volume <= 500 and volume >0:     # cone part aaa
-        # volume = volume/1000
-        height = -0.0000372 * (volume**2)+0.0491*volume+3.749 # y=-0.0000372x^{2}+0.0491x+3.749
-    
-    if height < 0.1:
-        return 0.1
-    return height
+requirements = {"robotType": "Flex", "apiLevel": "2.20"}
 
-print(get_height(500))
+metadata = {
+    "protocolName": "Testing Partial pickup",
+    "author": "Nico To",
+    "description": "aaaaaaaaa",
+}
+
+
+def run(protocol: protocol_api.ProtocolContext):
+    partial_rack = protocol.load_labware(
+        load_name="opentrons_flex_96_tiprack_1000ul", location="A3"
+    )
+    tips1000 = [
+        protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot)
+        for slot in ["A3", "B3", "C3"]
+    ]
+
+    right_pipette = protocol.load_instrument(
+        "flex_8channel_1000", mount="right", tip_racks=tips1000
+    )
+
+    right_pipette.configure_nozzle_layout(
+        style=SINGLE,
+        start="A1",
+        # end="D1",
+    )
+    tips_by_row = sum(partial_rack.rows(), [])
+    pipette.pick_up_tip(location=tips_by_row.pop(0))
+
+
+    pipette.drop_tip()
+    # pick up A2 from tip rack
+    pipette.pick_up_tip(location=tips_by_row.pop(0))

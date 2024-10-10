@@ -52,6 +52,17 @@ def add_parameters(parameters: protocol_api.Parameters):
             {"display_name": "Resuspend and Dilute", "value": "resuspend_and_dilute"},
         ],
     )
+    
+    parameters.add_str(
+        variable_name="tube_type",
+        display_name="Tube Type",
+        description="PCR or 1.5ml tube",
+        default="onefive_tube",
+        choices=[
+            {"display_name": "1.5 ml ", "value": "onefive_tube"},
+            {"display_name": "Dilute", "value": "pcr"},
+        ],
+    )
 
     parameters.add_float(
         variable_name="buffer_stock_amt",
@@ -148,11 +159,18 @@ def run(protocol: protocol_api.ProtocolContext):
         "C1",
         "peptide sample rack",
     )
-    solution_rack = protocol.load_labware(
-        "opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap",
-        "C2",
-        "final solution rack",
-    )
+    if protocol.params.tube_type == "onefive_tube":
+        solution_rack = protocol.load_labware(
+            "opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap",
+            "C2",
+            "final solution rack",
+        )
+    else:
+        solution_rack = protocol.load_labware(
+            "opentrons_96_wellplate_200ul_pcr_full_skirt",
+            "C2",
+            "final solution rack",
+        )
     # left_pipette = protocol.load_instrument("flex_1channel_1000", "left", tip_racks=tips1000)
     left_pipette = protocol.load_instrument(
         "flex_1channel_1000", "left", tip_racks=tips1000
