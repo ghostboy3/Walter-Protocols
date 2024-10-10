@@ -114,7 +114,7 @@ def send_email(msg):
     data = {
         # "subject": "Test Subject",
         "body": msg,
-        "to_email": "lmcgary@lunenfeld.ca"
+        "to_email": "nico.luu.to@gmail.com"
     }
     data_encoded = json.dumps(data).encode('utf-8')
     
@@ -452,15 +452,15 @@ def run(protocol: protocol_api.ProtocolContext):
         # wet_tip(left_pipette, digestion_buffer_storage.bottom(get_height_smalltube(digestion_buffer_stock_amt)))
         left_pipette.aspirate(digestion_buffer_per_sample_amt, digestion_buffer_storage.bottom(get_height_smalltube(digestion_buffer_stock_amt)))
         left_pipette.air_gap(volume=5)
-        left_pipette.dispense(digestion_buffer_per_sample_amt+5, reagent_plate.wells()[i].bottom(2), 10)
-        left_pipette.mix(7, digestion_buffer_per_sample_amt, reagent_plate.wells()[i].bottom(1))
-        #no bubbles
-        left_pipette.flow_rate.aspirate = 300
-        left_pipette.flow_rate.dispense = 500
-        left_pipette.aspirate(100, reagent_plate.wells()[i].bottom(1), rate = 0.25)
-        left_pipette.dispense(100, reagent_plate.wells()[i].top(), rate = 0.5)
-        left_pipette.aspirate(6, reagent_plate.wells()[i].bottom(), rate = 0.5)
-        left_pipette.dispense(6, reagent_plate.wells()[i].top(), rate = 0.75)
+        left_pipette.dispense(digestion_buffer_per_sample_amt+5, reagent_plate.wells()[i].top(2), 0.5)
+        # left_pipette.mix(5, digestion_buffer_per_sample_amt, reagent_plate.wells()[i].bottom(1))
+        # #no bubbles
+        # left_pipette.flow_rate.aspirate = 300
+        # left_pipette.flow_rate.dispense = 500
+        # left_pipette.aspirate(100, reagent_plate.wells()[i].bottom(1), rate = 0.25)
+        # left_pipette.dispense(100, reagent_plate.wells()[i].top(), rate = 0.5)
+        # left_pipette.aspirate(6, reagent_plate.wells()[i].bottom(), rate = 0.5)
+        # left_pipette.dispense(6, reagent_plate.wells()[i].top(), rate = 0.75)
 
         left_pipette.blow_out(reagent_plate.wells()[i].top())
         left_pipette.touch_tip()
@@ -470,7 +470,17 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
     hs_mod.close_labware_latch()
+    # Mixing with multi channel
+    for i in range(0, math.ceil(num_samples/8)):
+        right_pipette.pick_up_tip()
+        right_pipette.mix(5, digestion_buffer_per_sample_amt, reagent_plate['A' + str(i+1)].bottom(0.5))
+        right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
+        right_pipette.touch_tip()
+        remove_tip(right_pipette, protocol.params.dry_run)
+
+    hs_mod.open_labware_latch()
     protocol.pause('''Put the lid on!!!''')
+    hs_mod.close_labware_latch()
     hs_mod.set_and_wait_for_shake_speed(1450)       #1000 rpm
     hs_mod.set_and_wait_for_temperature(37)         #37°C
     protocol.pause('''Tell me when to stop!! (4hr incubation time)''')
