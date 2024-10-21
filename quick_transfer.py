@@ -4,9 +4,9 @@ from opentrons import protocol_api
 import math
 
 metadata = {
-    "protocolName": "Serial Dilution",
+    "protocolName": "The Better Quick Transfer 😎",
     "author": "Nico To",
-    "description": "A nameless dilution protocol (prev. previously called pre-evotip pipetting)",
+    "description": "Replica of the quick transfer function that actually works",
 }
 requirements = {"robotType": "Flex", "apiLevel": "2.19"}
 
