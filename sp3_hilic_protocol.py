@@ -3,6 +3,7 @@ import math
 import urllib.request
 import urllib.parse
 import json
+from opentrons import types
 
 
 
@@ -341,7 +342,7 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("\nPlacing tube on magnetic separator and allowing 10s for microparticles to clear")
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     protocol.delay(seconds=bead_settle_time+5, msg="waiting 7 seconds for microparticles to clear")
-    aspirate_spuernatent_to_trash(right_pipette, 50, 0.6)
+    aspirate_spuernatent_to_trash(right_pipette, 25, 0.6)
     
     protocol.comment("\nWashing and equilibrating the microparticles in "+str(wash_volume) + "µl Equilibration Buffer (2 times)")
     for wash_num in range (0,num_washes):     # all washes before the last wash with EQ buffer
@@ -354,16 +355,8 @@ def run(protocol: protocol_api.ProtocolContext):
             # wet_tip(right_pipette, equilibration_buffer_storage[math.ceil(equilibartion_buffer_amt/11)-1].bottom(1))
             right_pipette.aspirate(wash_volume, equilibration_buffer_storage[math.ceil(equilibartion_buffer_amt/11)-1].bottom(1))
             right_pipette.air_gap(volume=5)
-            right_pipette.dispense(wash_volume, reagent_plate['A' + str(i+1)].bottom(2))
-            right_pipette.mix(8, wash_volume+5, reagent_plate['A' + str(i+1)].bottom(2),2.5)
-            
-            # no bubbles
-            right_pipette.flow_rate.aspirate = 300
-            right_pipette.flow_rate.dispense = 500
-            right_pipette.aspirate(100, reagent_plate['A' + str(i+1)].bottom(1), rate = 0.25)
-            right_pipette.dispense(100, reagent_plate['A' + str(i+1)].top(), rate = 0.5)
-            right_pipette.aspirate(50, reagent_plate['A' + str(i+1)].bottom(), rate = 0.5)
-            right_pipette.dispense(50, reagent_plate['A' + str(i+1)].top(), rate = 1)
+            right_pipette.dispense(wash_volume, reagent_plate['A' + str(i+1)].bottom(2),0.5)
+            right_pipette.mix(8, wash_volume+5, reagent_plate['A' + str(i+1)].bottom(2),0.5)
 
             
             right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
@@ -441,19 +434,14 @@ def run(protocol: protocol_api.ProtocolContext):
             wash_buffer_amt -= wash_buffer_resuspend_amt/1000*8
             # wet_tip(right_pipette,wash_buffer_storage[math.ceil(wash_buffer_amt/11)-1].bottom(2))
             right_pipette.aspirate(wash_buffer_resuspend_amt, wash_buffer_storage[math.ceil(wash_buffer_amt/11)-1].bottom(2))
-            right_pipette.air_gap(volume=5)
-            # right_pipette.flow_rate.aspirate = 1200
-            # right_pipette.flow_rate.dispense = 1200
-            right_pipette.dispense(wash_buffer_resuspend_amt+5, reagent_plate['A' + str(i+1)].bottom(2), rate= 0.75)
-            right_pipette.mix(15, wash_buffer_resuspend_amt-10, reagent_plate['A' + str(i+1)].bottom(2),rate= 0.75)
-           
-            # no bubbles
-            # right_pipette.flow_rate.aspirate = 300
-            # right_pipette.flow_rate.dispense = 500
-            # right_pipette.aspirate(100, reagent_plate['A' + str(i+1)].bottom(1), rate = 0.25)
-            # right_pipette.dispense(100, reagent_plate['A' + str(i+1)].top(), rate = 0.5)
-            # right_pipette.aspirate(50, reagent_plate['A' + str(i+1)].bottom(), rate = 0.5)
-            # right_pipette.dispense(50, reagent_plate['A' + str(i+1)].top(), rate = 1)
+
+            right_pipette.dispense(wash_buffer_resuspend_amt, reagent_plate['A' + str(i+1)].bottom(2), rate= 0.75)
+            
+            right_pipette.mix(4, wash_buffer_resuspend_amt-10, reagent_plate['A' + str(i+1)].bottom().move(types.Point(x=0, y=2, z=4)),rate= 4)
+            right_pipette.mix(4, wash_buffer_resuspend_amt-10, reagent_plate['A' + str(i+1)].bottom().move(types.Point(x=0, y=-2, z=4)),rate= 4)
+            right_pipette.mix(4, wash_buffer_resuspend_amt-10, reagent_plate['A' + str(i+1)].bottom().move(types.Point(x=2, y=0, z=4)),rate= 4)
+            right_pipette.mix(4, wash_buffer_resuspend_amt-10, reagent_plate['A' + str(i+1)].bottom().move(types.Point(x=-2, y=0, z=4)),rate= 4)
+            right_pipette.mix(4, wash_buffer_resuspend_amt-10, reagent_plate['A' + str(i+1)].bottom(2),rate= 3)
             right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
             right_pipette.touch_tip()
             remove_tip(right_pipette, protocol.params.dry_run)
