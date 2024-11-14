@@ -119,9 +119,13 @@ def run(protocol: protocol_api.ProtocolContext):
         protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot)
         for slot in ["A3"]
     ]  # add more later
+    tips200 = [
+        protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", slot)
+        for slot in ["B3"]
+    ]  # add more later
     tips50 = [
         protocol.load_labware("opentrons_flex_96_filtertiprack_50uL", slot)
-        for slot in ["B3"]
+        for slot in ["C3"]
     ]  # add more later
     
     if start_tube_type == "fifteen_falcon" or start_tube_type =="fifty_falcon":
@@ -169,14 +173,15 @@ def run(protocol: protocol_api.ProtocolContext):
         else:
             pipette.drop_tip(chute)
 
-    
-
-    amount_of_reagant_remaining = protocol.params.start_tube_volume * 1000
-    for i in range (0, num_samples):
-        pipette = get_pipette(transfer_vol)
-        pipette.pick_up_tip()
-        pipette.aspirate(transfer_vol, reagent_stock_storage.bottom(get_height_falcon(amount_of_reagant_remaining)))
-        pipette.dispense(transfer_vol, sample_rack.wells()[i].bottom(0.1))
-        pipette.blow_out(sample_rack.wells()[i].top())
-        pipette.touch_tip()
-        remove_tip(pipette, protocol.params.dry_run)
+    left_pipette.pick_up_tip()
+    left_pipette.aspirate(1, reagent_stock_storage)
+    left_pipette.return_tip()
+    # amount_of_reagant_remaining = protocol.params.start_tube_volume * 1000
+    # for i in range (0, num_samples):
+    #     pipette = get_pipette(transfer_vol)
+    #     pipette.pick_up_tip()
+    #     pipette.aspirate(transfer_vol, reagent_stock_storage.bottom(get_height_falcon(amount_of_reagant_remaining)))
+    #     pipette.dispense(transfer_vol, sample_rack.wells()[i].bottom(0.1))
+    #     pipette.blow_out(sample_rack.wells()[i].top())
+    #     pipette.touch_tip()
+    #     remove_tip(pipette, protocol.params.dry_run)
