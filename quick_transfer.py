@@ -147,18 +147,7 @@ def run(protocol: protocol_api.ProtocolContext):
             "C1",
             "peptide sample rack",
         )
-    if protocol.params.finalsample_tube_type == "onefive_tube":
-        solution_rack = protocol.load_labware(
-            "opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap",
-            "C2",
-            "final solution rack",
-        )
-    else:
-        solution_rack = protocol.load_labware(
-            "opentrons_96_wellplate_200ul_pcr_full_skirt",
-            "C2",
-            "final solution rack",
-        )
+
     # left_pipette = protocol.load_instrument("flex_1channel_1000", "left", tip_racks=tips1000)
     left_pipette = protocol.load_instrument(
         "flex_1channel_1000", "left", tip_racks=tips1000
@@ -179,6 +168,8 @@ def run(protocol: protocol_api.ProtocolContext):
             pipette.return_tip()
         else:
             pipette.drop_tip(chute)
+
+    
 
     amount_of_reagant_remaining = protocol.params.start_tube_volume * 1000
     for i in range (0, num_samples):

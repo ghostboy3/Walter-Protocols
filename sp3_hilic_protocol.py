@@ -200,7 +200,7 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod = protocol.load_module(module_name="heaterShakerModuleV1", location="D1")    #heat shaker module
     tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A2", "final solution rack")
     sample_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "A1", "sample stock plate")
-    reagent_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B2", "reagent plate")
+    reagent_plate = magnetic_block.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt","reagent plate")
     # final_sample_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B1", "reagent plate")
     # buffer_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "B1", "reagent stock rack")   # equilibration, binding, and wash buffer
     working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "D2")
@@ -334,7 +334,7 @@ def run(protocol: protocol_api.ProtocolContext):
             remove_tip(left_pipette, protocol.params.dry_run)
         
     protocol.comment("\nPlacing tube on magnetic separator and allowing 10s for microparticles to clear")
-    protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
+    # protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     protocol.delay(seconds=bead_settle_time+5, msg="waiting 7 seconds for microparticles to clear")
     aspirate_spuernatent_to_trash(right_pipette, 25, 0.6)
     

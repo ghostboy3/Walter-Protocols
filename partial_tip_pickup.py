@@ -23,6 +23,7 @@ def run(protocol: protocol_api.ProtocolContext):
     )
 
     tips_by_row = partial_rack.rows_by_name()["D"] + partial_rack.rows_by_name()["H"]
+    print(tips_by_row)
 
     # pick up A1-D1 from tip rack
     pipette.pick_up_tip(location=tips_by_row.pop(0))
