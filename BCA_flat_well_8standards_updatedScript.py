@@ -248,6 +248,7 @@ def run(assay):
         old: well from sample stock
         new: row letter from sample plate
         '''
+        left_pipette.pick_up_tip()
         left_pipette.aspirate(80, bsa_plate[old].bottom(1.5), 0.25)
         
         for i in range(1, 4):  # A1,A2,A3
@@ -277,6 +278,7 @@ def run(assay):
 
     # Vial H
     # Blank
+    left_pipette.pick_up_tip()
     left_pipette.aspirate(80, reagent_stock["A1"].bottom(20), 0.25)
     for i in range(1, 4):  # A1,A2,A3
         left_pipette.dispense(25, sample_plate["H" + str(i)].bottom(8), 0.25)
@@ -382,28 +384,24 @@ def run(assay):
 
     if total_working_reagent_volume <= max_volume:
         for i in range(num_columns):
-            right_pipette.transfer(
-                working_reagent_volume,
-                working_reagent_reservoir["A1"].bottom(1),
-                sample_plate.rows()[0][i].bottom(5),
-                new_tip="always",
-            )
+            right_pipette.pick_up_tip()
+            right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir["A1"].bottom(1), 0.25)
+            right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][i].bottom(5),0.1)
+            right_pipette.drop_tip()
 
     else:
         for i in range(6):
-            right_pipette.transfer(
-                working_reagent_volume,
-                working_reagent_reservoir["A1"].bottom(1),
-                sample_plate.rows()[0][i].bottom(5),
-                new_tip="always",
-            )
+            right_pipette.pick_up_tip()
+            right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir["A1"].bottom(1), 0.25)
+            right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][i].bottom(5),0.1)
+            right_pipette.drop_tip()
+            
         j = 6
         while j < (6 + remainder_columns):
-            right_pipette.transfer(
-                working_reagent_volume,
-                working_reagent_reservoir["A2"].bottom(1),
-                sample_plate.rows()[0][j].bottom(5),
-            )
+            right_pipette.pick_up_tip()
+            right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir["A2"].bottom(1), 0.25)
+            right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][j].bottom(5),0.1)
+            right_pipette.drop_tip()
             j = j + 1
 
         # Prep HeaterShaker

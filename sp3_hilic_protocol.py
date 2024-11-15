@@ -371,7 +371,7 @@ def run(protocol: protocol_api.ProtocolContext):
         hs_mod.open_labware_latch()
         protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
         # aspirate_spuernatent_to_trash(right_pipette, wash_volume, 0.1)
-        
+
         if wash_num == 0:   # first wash
             protocol.delay(seconds=bead_settle_time+5, msg="waiting for beads to settle (20 sec)")
             aspirate_spuernatent_to_trash(right_pipette, wash_volume-10, 0.25)       # leave the last 5ul in the well plate
@@ -414,6 +414,18 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("\nAllow proteins to bind to microparticles for 30 min. Mix gently and continuously")
     # protocol.pause('''"Put the lid on!!!" -O____________O''')
     hs_mod.set_and_wait_for_shake_speed(1550)       #1100 rpm
+    # Setting up digestion buffer       FIX THIS SECTION
+    protocol.comment("\nSetting up the digestion buffer")
+    digestion_buffer_in_well_amt = digestion_buffer_per_sample_amt + 5
+    for i in range (0, math.ceil((num_samples*digestion_buffer_in_well_amt)/1000)):
+        # left_pipette.pick_up_tip()
+        pick_up(left_pipette)
+        digestion_buffer_stock_amt -= digestion_buffer_per_sample_amt+5
+        left_pipette.aspirate(digestion_buffer_per_sample_amt+5, digestion_buffer_storage.bottom(get_height_smalltube(digestion_buffer_stock_amt)), rate=0.2)
+        left_pipette.dispense(digestion_buffer_per_sample_amt+5, digestion_buffer_plate.wells()[i].bottom(1), rate=0.2)
+        left_pipette.blow_out(reagent_plate.wells()[i].top())
+        remove_tip(left_pipette, protocol.params.dry_run)
+
     # protocol.pause('''"Tell me when to stop!! (30 min incubation time)''')
     protocol.delay(seconds=10 if protocol.params.dry_run else 1800, msg="30 minute incubation (10 seconds for dry run)")
     hs_mod.deactivate_shaker()
@@ -467,20 +479,16 @@ def run(protocol: protocol_api.ProtocolContext):
 
     protocol.comment("\n\n--------------------Protein Digestion Procedure-----------------------")
     protocol.comment("Resuspending microparticles with absorbed protein mix in 100-200µl digestion buffer")
-    for i in range (0, num_samples):
-        # left_pipette.pick_up_tip()
-        pick_up(left_pipette)
-        digestion_buffer_stock_amt -= digestion_buffer_per_sample_amt
-        # wet_tip(left_pipette, digestion_buffer_storage.bottom(get_height_smalltube(digestion_buffer_stock_amt)))
-        left_pipette.aspirate(digestion_buffer_per_sample_amt, digestion_buffer_storage.bottom(get_height_smalltube(digestion_buffer_stock_amt)))
-        # left_pipette.air_gap(volume=5)
-        left_pipette.dispense(digestion_buffer_per_sample_amt, reagent_plate.wells()[i].bottom(2), rate=0.5)
-        left_pipette.mix(3, digestion_buffer_per_sample_amt-10, rate=0.25)
-        mix_sides(left_pipette, 1, digestion_buffer_per_sample_amt-15, reagent_plate.wells()[i],0.25)
-        left_pipette.blow_out(reagent_plate.wells()[i].top(2))
-        left_pipette.blow_out(reagent_plate.wells()[i].top())
-        left_pipette.touch_tip()
-        remove_tip(left_pipette, protocol.params.dry_run)
+    for i in range (0, math.ceil(num_samples/8)):
+        pick_up(right_pipette)
+        right_pipette.aspirate(digestion_buffer_per_sample_amt, digestion_buffer_plate['A' + str(i+1)].bottom(0.5), rate=0.1)
+        right_pipette.dispense(digestion_buffer_per_sample_amt, reagent_plate['A' + str(i+1)].bottom(1), rate=0.1)
+        right_pipette.mix(3, digestion_buffer_per_sample_amt-10, rate=0.25)
+        mix_sides(right_pipette, 1, digestion_buffer_per_sample_amt-15, reagent_plate.wells()[i],0.75)
+        right_pipette.blow_out(reagent_plate['A' + str(i+1)].top(2))
+        right_pipette.blow_out(reagent_plate['A' + str(i+1)].top())
+        right_pipette.touch_tip()
+        remove_tip(right_pipette, protocol.params.dry_run)
     protocol.comment("\nIncubating sample at 37°C for 4 hours. Mix continuously at "+str(shake_speed)+" rpm")
     hs_mod.open_labware_latch()
     protocol.pause('''Put the lid on!!!''')

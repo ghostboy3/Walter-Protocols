@@ -147,7 +147,7 @@ def run(protocol: protocol_api.ProtocolContext):
         )
     else:
         sample_rack = protocol.load_labware(
-            "opentrons_96_wellplate_200ul_pcr_full_skirt",
+            "opentrons_96_aluminumblock_biorad_wellplate_200ul",
             "C1",
             "peptide sample rack",
         )
@@ -172,16 +172,23 @@ def run(protocol: protocol_api.ProtocolContext):
             pipette.return_tip()
         else:
             pipette.drop_tip(chute)
-
-    left_pipette.pick_up_tip()
-    left_pipette.aspirate(1, reagent_stock_storage)
-    left_pipette.return_tip()
-    # amount_of_reagant_remaining = protocol.params.start_tube_volume * 1000
-    # for i in range (0, num_samples):
-    #     pipette = get_pipette(transfer_vol)
-    #     pipette.pick_up_tip()
-    #     pipette.aspirate(transfer_vol, reagent_stock_storage.bottom(get_height_falcon(amount_of_reagant_remaining)))
-    #     pipette.dispense(transfer_vol, sample_rack.wells()[i].bottom(0.1))
-    #     pipette.blow_out(sample_rack.wells()[i].top())
-    #     pipette.touch_tip()
-    #     remove_tip(pipette, protocol.params.dry_run)
+    if transfer_vol > 5:
+        pipette_max = 1000-5      # max ul a pipette can contain 
+    else:
+        pipette_max = 50-5
+    
+    num_transfers = math.ceil((num_samples*transfer_vol)/pipette_max)
+    pipette = get_pipette(transfer_vol)
+    well_counter = 0
+    
+    for i in range (0, num_transfers):
+        if i != num_transfers-1:    # not on last iteration
+            aspirate_vol = pipette_max - pipette_max%transfer_vol
+        else:
+            aspirate_vol = (num_samples*transfer_vol)-(pipette_max - pipette_max%transfer_vol)*(num_transfers-1)
+        pipette.pick_up_tip()
+        pipette.aspirate(aspirate_vol+5, reagent_stock_storage.bottom(), 0.25)
+        for x in range (0, math.floor(aspirate_vol/transfer_vol)):
+            pipette.dispense(transfer_vol, sample_rack.wells()[well_counter], 0.25)
+            well_counter += 1
+        remove_tip(pipette, protocol.params.dry_run)
