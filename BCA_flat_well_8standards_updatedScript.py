@@ -39,7 +39,7 @@ def run(assay):
 
     number_samples = assay.params.number_samples
     # LOADING TIPS
-    tips1000 = [
+    tips200 = [
         assay.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot)
         for slot in ["A3", "B3", "C3"]
     ]
@@ -47,10 +47,10 @@ def run(assay):
 
     # LOADING PIPETTES
     left_pipette = assay.load_instrument(
-        "flex_1channel_1000", "left", tip_racks=tips1000
+        "flex_1channel_1000", "left", tip_racks=tips200
     )
     right_pipette = assay.load_instrument(
-        "flex_8channel_1000", "right", tip_racks=tips1000
+        "flex_8channel_1000", "right", tip_racks=tips200
     )
 
     # LOADING LABWARE
@@ -125,7 +125,7 @@ def run(assay):
 
         for i in range(0, 3):
             left_pipette.dispense(
-                25, sample_plate.wells()[drop_off + i].bottom(8), rate=0.25
+                25, sample_plate.wells()[drop_off + i].bottom(0), rate=0.25
             )
 
         left_pipette.drop_tip(chute)
@@ -252,7 +252,7 @@ def run(assay):
         left_pipette.aspirate(80, bsa_plate[old].bottom(1.5), 0.25)
         
         for i in range(1, 4):  # A1,A2,A3
-            left_pipette.dispense(25, sample_plate[new + str(i)].bottom(8), 0.25)
+            left_pipette.dispense(25, sample_plate[new + str(i)].bottom(0), 0.25)
         left_pipette.drop_tip(chute)
 
     # Vial A
@@ -343,7 +343,6 @@ def run(assay):
         )
 
     if max_volume >= total_working_reagent_volume >= 9000:
-
         right_pipette.pick_up_tip()
         right_pipette.mix(5, 1000, working_reagent_reservoir["A1"].bottom(4))
         right_pipette.drop_tip(chute)
@@ -385,22 +384,22 @@ def run(assay):
     if total_working_reagent_volume <= max_volume:
         for i in range(num_columns):
             right_pipette.pick_up_tip()
-            right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir["A1"].bottom(1), 0.25)
-            right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][i].bottom(5),0.1)
+            right_pipette.aspirate(working_reagent_volume+2, working_reagent_reservoir["A1"].bottom(1), 0.1)
+            right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][i].top(1),0.1)
             right_pipette.drop_tip()
 
     else:
         for i in range(6):
             right_pipette.pick_up_tip()
-            right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir["A1"].bottom(1), 0.25)
-            right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][i].bottom(5),0.1)
+            right_pipette.aspirate(working_reagent_volume+2, working_reagent_reservoir["A1"].bottom(1), 0.1)
+            right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][i].top(1),0.1)
             right_pipette.drop_tip()
             
         j = 6
         while j < (6 + remainder_columns):
             right_pipette.pick_up_tip()
-            right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir["A2"].bottom(1), 0.25)
-            right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][j].bottom(5),0.1)
+            right_pipette.aspirate(working_reagent_volume+2, working_reagent_reservoir["A2"].bottom(1), 0.1)
+            right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][j].top(1),0.1)
             right_pipette.drop_tip()
             j = j + 1
 
