@@ -97,7 +97,6 @@ def run(protocol):
         # right_pipette.aspirate(sample_in_solution_amt, sample_stock.bottom(10))
         left_pipette.dispense(sample_in_solution_amt, tube_rack["D2"].top())
         left_pipette.blow_out(tube_rack["D2"].top())
-    # send_command_to_raspberry_pi('start_experiment')
 
     left_pipette.return_tip()
 

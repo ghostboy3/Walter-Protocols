@@ -40,7 +40,7 @@ def run(assay):
     number_samples = assay.params.number_samples
     # LOADING TIPS
     tips200 = [
-        assay.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot)
+        assay.load_labware("opentrons_flex_96_filtertiprack_200uL", slot)
         for slot in ["A3", "B3", "C3"]
     ]
     chute = assay.load_waste_chute()
@@ -228,26 +228,26 @@ def run(assay):
 
     # Vial G : 25 ug/ml
     left_pipette.pick_up_tip()
-    left_pipette.aspirate(30, reagent_stock["B6"].bottom(25), rate=0.2)
-    left_pipette.dispense(30, bsa_plate["B7"].bottom(2), rate=0.2)
-    left_pipette.blow_out(bsa_plate["B7"].top(2))
+    left_pipette.aspirate(30, bsa_plate["B6"].bottom(25), rate=0.2)
+    left_pipette.dispense(30, bsa_plate["C1"].bottom(2), rate=0.2)
+    left_pipette.blow_out(bsa_plate["C1"].top(2))
     left_pipette.touch_tip()
     left_pipette.drop_tip(chute)
 
     left_pipette.pick_up_tip()
     left_pipette.aspirate(120, reagent_stock["A1"].bottom(25), rate=0.2)
-    left_pipette.dispense(120, bsa_plate["B7"].bottom(2), rate=0.2)
-    left_pipette.mix(3, 100, bsa_plate["B7"].bottom(2), rate=0.2)
-    left_pipette.blow_out(bsa_plate["B7"].top(2))    
+    left_pipette.dispense(120, bsa_plate["C1"].bottom(2), rate=0.2)
+    left_pipette.mix(3, 100, bsa_plate["C1"].bottom(2), rate=0.2)
+    left_pipette.blow_out(bsa_plate["C1"].top(2))    
     left_pipette.touch_tip()
     left_pipette.drop_tip(chute)
 
-    # Vial H : 0 ul/ml
+    # Vial H : 0 ul/ml      ??DELETE??
     left_pipette.pick_up_tip()
     left_pipette.aspirate(150, reagent_stock["A1"].bottom(25), rate=0.2)
-    left_pipette.dispense(150, bsa_plate["B8"].bottom(2), rate=0.2)
-    left_pipette.mix(3, 100, bsa_plate["B8"].bottom(2), rate=0.2)
-    left_pipette.blow_out(bsa_plate["B8"].top(2))    
+    left_pipette.dispense(150, bsa_plate["C2"].bottom(2), rate=0.2)
+    left_pipette.mix(3, 100, bsa_plate["C2"].bottom(2), rate=0.2)
+    left_pipette.blow_out(bsa_plate["C2"].top(2))    
     left_pipette.touch_tip()
     left_pipette.drop_tip(chute)
 
