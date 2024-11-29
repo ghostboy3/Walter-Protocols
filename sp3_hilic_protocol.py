@@ -331,9 +331,9 @@ def run(protocol: protocol_api.ProtocolContext):
                 pick_up(pip)
     
     def check_tips():
-        # nonlocal tips1000
-        # nonlocal staging_racks
-        # nonlocal count
+        nonlocal tips1000
+        nonlocal staging_racks
+        nonlocal count
         # tip_box = protocol.load_labware('opentrons_flex_96_filtertiprack_1000uL', 'A3')
         for i in range (0,3):
             tip_box_slots = ['A3', 'B3', 'C3']
@@ -350,10 +350,11 @@ def run(protocol: protocol_api.ProtocolContext):
                 rack_num = 0
                 for slot in ['A4', 'B4', 'C4']:
                     labware = protocol.deck[slot]
-                    if (labware and labware.is_tiprack)==False:
+                    if labware and labware.is_tiprack:
+                        tips1000[i] = staging_racks[rack_num]
                         protocol.move_labware(
                             labware=staging_racks[rack_num],
-                            new_location=tip_box_slots[i],#'A1',
+                            new_location=tip_box_slots[i],
                             use_gripper=True
                         )
                         break
@@ -362,9 +363,6 @@ def run(protocol: protocol_api.ProtocolContext):
                         protocol.comment(f"No tip box detected in slot {slot}.")
                         rack_num+=1
                         pass
-                tips1000[i] = protocol.load_labware('opentrons_flex_96_filtertiprack_1000uL', tip_box_slots[i])
-                left_pipette.reset_tipracks()
-                right_pipette.reset_tipracks()
 
     
     def mix_sides(pipette, num_mixes, vol, plate, rate):
