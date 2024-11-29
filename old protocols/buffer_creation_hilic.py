@@ -92,8 +92,52 @@ def get_height_50ml_falcon(volume):
     Volume: volume of liquid in tube in µl
     Return: hieght from bottom of tube in millimeters
     '''
-    #y=1.8x+12
-    if volume >=5000 and volume <=50000:
-        xxx
-    if volume <5000:
-        return 0
+    height = (1.8*(volume/1000))+12-3
+    return height
+
+def get_eq_buffer_vols(total_buffer_amt, ammonium_acetate_concentration):
+    '''
+    total_buffer_amt: amount of buffer being created in ul
+    ammonium_acetate_concentration: Concentration of Ammonium acetate 
+    Returns: A dictionary with all the volumes in ul
+    '''
+    acn = total_buffer_amt*0.15     #amount of acetonitrle
+    ammonium_acetate = (total_buffer_amt-acn)*(100/ammonium_acetate_concentration)
+    water = total_buffer_amt-acn-ammonium_acetate
+    final_vols = {"acn": acn,
+                  "ammonium_acetate": ammonium_acetate,
+                  "water": water}
+    return final_vols
+
+def get_binding_buffer_vols(total_buffer_amt, ammonium_acetate_concentration):
+    '''
+    total_buffer_amt: amount of buffer being created in ul
+    ammonium_acetate_concentration: Concentration of Ammonium acetate 
+    Returns: A dictionary with all the volumes in ul
+    '''
+    acn = total_buffer_amt*0.30     #amount of acetonitrle
+    ammonium_acetate = (total_buffer_amt-acn)*(200/ammonium_acetate_concentration)
+    water = total_buffer_amt-acn-ammonium_acetate
+    final_vols = {"acn": acn,
+                  "ammonium_acetate": ammonium_acetate,
+                  "water": water}
+    return final_vols
+def get_wash_buffer_vols(total_buffer_amt):
+    '''
+    total_buffer_amt: amount of buffer being created in ul
+    ammonium_acetate_concentration: Concentration of Ammonium acetate 
+    Returns: A dictionary with all the volumes in ul
+    '''
+    acn = total_buffer_amt*0.95     #amount of acetonitrle
+    water = total_buffer_amt-acn
+    final_vols = {"acn": acn,
+                  "water": water}
+    return final_vols
+
+
+print(get_eq_buffer_vols(5000, 300))
+print(get_binding_buffer_vols(5000, 300))
+print(get_wash_buffer_vols(5000))
+    
+    
+        
