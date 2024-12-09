@@ -1,6 +1,6 @@
 # CHANGE TITLE IF NEEDED IN PROTOCOL NAME
 metadata = {
-    "protocolName": "BCA Assay,  8 Standards (1.5 mg/mL - 0.025 mg/mL), August 14 ",
+    "protocolName": "BCA Assay",
     "author": "Sasha",
     "description": "First Used Tip box is in position A3; Place Empty 1.5 mL Tubes in slots B1-C1 for standards, BSA Standard (2mg/mL) should be added to a 1.5 mL tube, need 550µL; 100µL of each unknown sample should be aliquoted to the sample stock plate going down a column starting at A1 "
     "calculate volumes needed of reagent A and B before hand to fill falcon tube and microcentrifuge tube with the appropriate volumes, reagent A should not exceed 20 mL, Reagent A Loading should be 200µL * ((number of columns +1) * 8)+8), Reagent B should be Reagent A Volume / 50 ",
@@ -407,7 +407,7 @@ def run(assay):
 
     heatshaker.open_labware_latch()
     assay.move_labware(sample_plate, heatshaker, use_gripper=True)
-    assay.pause("Place lid on well plate")
+    # assay.pause("Place lid on well plate")
     heatshaker.close_labware_latch()
     heatshaker.set_and_wait_for_temperature(37)
     heatshaker.set_and_wait_for_shake_speed(400)

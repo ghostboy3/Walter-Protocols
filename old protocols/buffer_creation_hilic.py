@@ -134,10 +134,11 @@ def get_wash_buffer_vols(total_buffer_amt):
                   "water": water}
     return final_vols
 
-
 print(get_eq_buffer_vols(5000, 300))
 print(get_binding_buffer_vols(5000, 300))
 print(get_wash_buffer_vols(5000))
-    
-    
-        
+
+def run(protocol):
+    tips1000 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot) for slot in ["A3"]]   # add more later
+    trash = protocol.load_waste_chute()
+    tube_rack = protocol.load_labware("opentrons_10_tuberack_nest_4x50ml_6x15ml_conical", "B2", "tube rack")
