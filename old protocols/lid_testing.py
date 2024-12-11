@@ -23,3 +23,5 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.open_labware_latch()
     protocol.move_labware(labware=sample_plate, new_location=hs_mod, use_gripper=True)
     protocol.move_labware(labware=lid, new_location=sample_plate, use_gripper=True)
+    protocol.move_labware(labware=lid, new_location='C1', use_gripper=True)
+    protocol.move_labware(labware=sample_plate, new_location='C2', use_gripper=True)

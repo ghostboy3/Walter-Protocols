@@ -359,148 +359,102 @@ def run(protocol: protocol_api.ProtocolContext):
             pipette.aspirate(vol, plate.bottom(0.1), rate = 0.2)
             pipette.dispense(vol, plate.bottom().move(types.Point(x=-2, y=0, z=3)), rate = rate)
 
+    
+    def create_buffers(total_vol, start_location, end_location):
+        '''
+        total_vol: list of transfer volumes in ul [vol1, vol2]
+        start_location: location of the acn, aa, or h2o
+        end_location: well number of the first slot for the buffer (1 to 12)
+        '''
+        protocol.comment(str(total_vol))
+        for i in range (0, len(total_vol)):
+            vol = total_vol[i]
+            for x in range (0, math.ceil(vol/1000)):
+                if x != math.ceil(vol/1000)-1:  #not last one yet
+                    left_pipette.aspirate(1000, start_location)
+                    left_pipette.dispense(1000, working_reagent_reservoir["A" +str(end_location+i)])
+                else:
+                    left_pipette.aspirate(vol-(1000*x), start_location)
+                    left_pipette.dispense(vol-(1000*x),working_reagent_reservoir["A" +str(end_location+i)])
+    
     protocol.comment("-------------BUFFER CREATION ---------------")
-    num_wells_eq_and_wash = math.ceil((equilibartion_buffer_amt)/10)
-    #ACN
-    pick_up(left_pipette)
-    for i in range (0, num_wells_eq_and_wash):
-        if i != num_wells_eq_and_wash -1:   # not on last wash yet
-            #eq buffer
-            acn_amt_eq_buff = get_eq_buffer_vols(10000, protocol.params.ammoniumAcetate_conc)['acn']
-            for x in range (0, math.ceil(acn_amt_eq_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(acn_amt_eq_buff/1000)-1:
-                    left_pipette.aspirate(1000, acn_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1)].top(3))
-                else:
-                    left_pipette.aspirate(acn_amt_eq_buff-(x*1000), acn_location)
-                    left_pipette.dispense(acn_amt_eq_buff-(x*1000), working_reagent_reservoir["A"+str(i+1)].top(3))
-            #binding buffer
-            acn_amt_binding_buff = get_binding_buffer_vols(10000, protocol.params.ammoniumAcetate_conc)['acn']
-            for x in range (0, math.ceil(acn_amt_binding_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(acn_amt_binding_buff/1000)-1:
-                    left_pipette.aspirate(1000, acn_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1+3)].top(3))
-                else:
-                    left_pipette.aspirate(acn_amt_binding_buff-(x*1000), acn_location)
-                    left_pipette.dispense(acn_amt_binding_buff-(x*1000), working_reagent_reservoir["A"+str(i+1+3)].top(3))
-        else:   #last wash
-            #eq buffer
-            left_pipette.aspirate(get_eq_buffer_vols((equilibartion_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['acn'], acn_location)
-            left_pipette.dispense(get_eq_buffer_vols((equilibartion_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['acn'], working_reagent_reservoir["A"+str(i+1)])
-            #binding buffer
-            acn_amt_binding_buff = get_binding_buffer_vols((binding_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['acn']
-            for x in range (0, math.ceil(acn_amt_binding_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(acn_amt_binding_buff/1000)-1:
-                    left_pipette.aspirate(1000, acn_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1+3)].top(3))
-                else:
-                    left_pipette.aspirate(acn_amt_binding_buff-(x*1000), acn_location)
-                    left_pipette.dispense(acn_amt_binding_buff-(x*1000), working_reagent_reservoir["A"+str(i+1+3)].top(3))
-        #wash buffer
-        acn_amt_wash_buff = get_wash_buffer_vols(wash_buffer_amt*1000)['acn']
-        for x in range (0, math.ceil(acn_amt_wash_buff/1000)):   #incase volume is over 1000
-            if x !=math.ceil(acn_amt_wash_buff/1000)-1:
-                left_pipette.aspirate(1000, acn_location)
-                left_pipette.dispense(1000, working_reagent_reservoir["A"+str(1+6)].top(3))
-            else:
-                left_pipette.aspirate(acn_amt_wash_buff-(x*1000), acn_location)
-                left_pipette.dispense(acn_amt_wash_buff-(x*1000), working_reagent_reservoir["A"+str(1+6)].top(3))
+    channel_max_vol = 10000 #each channel can hold up to 10000 ul
+    acn_eq_vols = []
+    acn_binding_vols = []
+    acn_wash_vols = []
+    aa_eq_vols = []
+    aa_binding_vols = []
+    water_eq_vols = []
+    water_binding_vols = []
+    water_wash_vols = []
+    #equilibartion buffer
+    for i in range (0, math.ceil((equilibartion_buffer_amt*1000)/channel_max_vol)):
+        #Not on last loop yet
+        if i !=math.ceil((equilibartion_buffer_amt*1000)/channel_max_vol)-1:
+            volumes =get_eq_buffer_vols(channel_max_vol, protocol.params.ammoniumAcetate_conc)
+            acn_eq_vols.append(volumes['acn'])
+            aa_eq_vols.append(volumes['ammonium_acetate'])
+            water_eq_vols.append(volumes['water'])
+        else:
+            volumes =get_eq_buffer_vols((equilibartion_buffer_amt*1000)-(channel_max_vol*i), protocol.params.ammoniumAcetate_conc)
+            acn_eq_vols.append(volumes['acn'])
+            aa_eq_vols.append(volumes['ammonium_acetate'])
+            water_eq_vols.append(volumes['water'])
+    #Binding buffer
+    for i in range (0, math.ceil((binding_buffer_amt*1000)/channel_max_vol)):
+        #Not on last loop yet
+        if i !=math.ceil((binding_buffer_amt*1000)/channel_max_vol)-1:
+            volumes =get_binding_buffer_vols(channel_max_vol, protocol.params.ammoniumAcetate_conc)
+            acn_binding_vols.append(volumes['acn'])
+            aa_binding_vols.append(volumes['ammonium_acetate'])
+            water_binding_vols.append(volumes['water'])
+        else:
+            volumes =get_binding_buffer_vols((equilibartion_buffer_amt*1000)-(channel_max_vol*i), protocol.params.ammoniumAcetate_conc)
+            acn_binding_vols.append(volumes['acn'])
+            aa_binding_vols.append(volumes['ammonium_acetate'])
+            water_binding_vols.append(volumes['water'])
+    #Wash buffer
+    for i in range (0, math.ceil((wash_buffer_amt*1000)/channel_max_vol)):
+        #Not on last loop yet
+        if i !=math.ceil((wash_buffer_amt*1000)/channel_max_vol)-1:
+            volumes =get_wash_buffer_vols(channel_max_vol)
+            acn_wash_vols.append(volumes['acn'])
+            water_wash_vols.append(volumes['water'])
+        else:
+            volumes =get_wash_buffer_vols((equilibartion_buffer_amt*1000)-(channel_max_vol*i))
+            acn_wash_vols.append(volumes['acn'])
+            water_wash_vols.append(volumes['water'])
+    
+    #Loading ACN
+    left_pipette.pick_up_tip()
+    create_buffers(acn_eq_vols, acn_location, 1)
+    create_buffers(acn_binding_vols, acn_location, 4)
+    create_buffers(acn_wash_vols, acn_location, 7)
     remove_tip(left_pipette, protocol.params.dry_run)
-    #Ammonium Acetate
-    pick_up(left_pipette)
-    for i in range (0, num_wells_eq_and_wash):
-        if i != num_wells_eq_and_wash -1:   # not on last wash yet
-            #eq buffer
-            aa_amt_eq_buff = get_eq_buffer_vols(10000, protocol.params.ammoniumAcetate_conc)['ammonium_acetate']
-            for x in range (0, math.ceil(aa_amt_eq_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(aa_amt_eq_buff/1000)-1:
-                    left_pipette.aspirate(1000, ammoniumAcetate_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1)].top(3))
-                else:
-                    left_pipette.aspirate(aa_amt_eq_buff-(x*1000), ammoniumAcetate_location)
-                    left_pipette.dispense(aa_amt_eq_buff-(x*1000), working_reagent_reservoir["A"+str(i+1)].top(3))
+    
+    #Loading Ammonium Acetate
+    left_pipette.pick_up_tip()
+    create_buffers(aa_eq_vols, ammoniumAcetate_location, 1)
+    create_buffers(aa_binding_vols, ammoniumAcetate_location, 4)
+    remove_tip(left_pipette, protocol.params.dry_run)
+    #Loading H2O
+    left_pipette.pick_up_tip()
+    create_buffers(water_eq_vols, water_location, 1)
+    create_buffers(water_binding_vols, water_location, 4)
+    create_buffers(water_wash_vols, water_location, 7)
+    remove_tip(left_pipette, protocol.params.dry_run)
+    protocol.comment("\n"*10)
+    protocol.comment(str(acn_eq_vols))
+    protocol.comment(str(acn_binding_vols))
+    protocol.comment(str(acn_wash_vols))
+    protocol.comment(str(aa_eq_vols))
+    protocol.comment(str(aa_binding_vols))
+    protocol.comment(str(water_eq_vols))
+    protocol.comment(str(water_binding_vols))
+    protocol.comment(str(water_wash_vols))
+    protocol.comment("\n"*10)
 
-            #binding buffer
-            aa_amt_binding_buff = get_binding_buffer_vols(10000, protocol.params.ammoniumAcetate_conc)['ammonium_acetate']
-            for x in range (0, math.ceil(aa_amt_binding_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(aa_amt_binding_buff/1000)-1:
-                    left_pipette.aspirate(1000, ammoniumAcetate_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1+3)].top(3))
-                else:
-                    left_pipette.aspirate(aa_amt_binding_buff-(x*1000), ammoniumAcetate_location)
-                    left_pipette.dispense(aa_amt_binding_buff-(x*1000), working_reagent_reservoir["A"+str(i+1+3)].top(3))
-        else:   #last wash
-            #eq buffer
-            aa_amt_eq_buff = get_eq_buffer_vols((equilibartion_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['ammonium_acetate']
-            for x in range (0, math.ceil(aa_amt_eq_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(aa_amt_eq_buff/1000)-1:
-                    left_pipette.aspirate(1000, ammoniumAcetate_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1)].top(3))
-                else:
-                    left_pipette.aspirate(aa_amt_eq_buff-(x*1000), ammoniumAcetate_location)
-                    left_pipette.dispense(aa_amt_eq_buff-(x*1000), working_reagent_reservoir["A"+str(i+1)].top(3))            
-            #binding buffer
-            aa_amt_binding_buff = get_binding_buffer_vols((binding_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['ammonium_acetate']
-            for x in range (0, math.ceil(aa_amt_binding_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(aa_amt_binding_buff/1000)-1:
-                    left_pipette.aspirate(1000, ammoniumAcetate_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1+3)].top(3))
-                else:
-                    left_pipette.aspirate(aa_amt_binding_buff-(x*1000), ammoniumAcetate_location)
-                    left_pipette.dispense(aa_amt_binding_buff-(x*1000), working_reagent_reservoir["A"+str(i+1+3)].top(3))
-    remove_tip(left_pipette, protocol.params.dry_run)
-    #Water
-    pick_up(left_pipette)
-    for i in range (0, num_wells_eq_and_wash):
-        if i != num_wells_eq_and_wash -1:   # not on last wash yet
-            #eq buffer
-            water_amt_eq_buff = get_eq_buffer_vols(10000, protocol.params.ammoniumAcetate_conc)['water']
-            for x in range (0, math.ceil(water_amt_eq_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(water_amt_eq_buff/1000)-1:
-                    left_pipette.aspirate(1000, water_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1)].top(3))
-                else:
-                    left_pipette.aspirate(water_amt_eq_buff-(x*1000), water_location)
-                    left_pipette.dispense(water_amt_eq_buff-(x*1000), working_reagent_reservoir["A"+str(i+1)].top(3))             #binding buffer
-            
-            #binding buffer
-            water_amt_binding_buff = get_binding_buffer_vols(10000, protocol.params.ammoniumAcetate_conc)['water']
-            for x in range (0, math.ceil(water_amt_binding_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(water_amt_binding_buff/1000)-1:
-                    left_pipette.aspirate(1000, water_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1+3)].top(3))
-                else:
-                    left_pipette.aspirate(water_amt_binding_buff-(x*1000), water_location)
-                    left_pipette.dispense(water_amt_binding_buff-(x*1000), working_reagent_reservoir["A"+str(i+1+3)].top(3))
-        else:   #last wash
-            #eq buffer
-            water_amt_eq_buff = get_eq_buffer_vols((equilibartion_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['water']
-            for x in range (0, math.ceil(water_amt_eq_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(water_amt_eq_buff/1000)-1:
-                    left_pipette.aspirate(1000, water_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1)].top(3))
-                else:
-                    left_pipette.aspirate(water_amt_eq_buff-(x*1000), water_location)
-                    left_pipette.dispense(water_amt_eq_buff-(x*1000), working_reagent_reservoir["A"+str(i+1)].top(3))             #binding buffer
-            #binding buffer
-            water_amt_binding_buff = get_binding_buffer_vols((binding_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['water']
-            for x in range (0, math.ceil(water_amt_binding_buff/1000)):   #incase volume is over 1000
-                if x !=math.ceil(water_amt_binding_buff/1000)-1:
-                    left_pipette.aspirate(1000, water_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A"+str(i+1+3)].top(3))
-                else:
-                    left_pipette.aspirate(water_amt_binding_buff-(x*1000), water_location)
-                    left_pipette.dispense(water_amt_binding_buff-(x*1000), working_reagent_reservoir["A"+str(i+1+3)].top(3))
-        #wash buffer
-        water_amt_wash_buff = get_wash_buffer_vols(wash_buffer_amt*1000)['water']
-        for x in range (0, math.ceil(water_amt_wash_buff/1000)):   #incase volume is over 1000
-            if x !=math.ceil(water_amt_wash_buff/1000)-1:
-                left_pipette.aspirate(1000, water_location)
-                left_pipette.dispense(1000, working_reagent_reservoir["A"+str(1+6)].top(3))
-            else:
-                left_pipette.aspirate(water_amt_wash_buff-(x*1000), water_location)
-                left_pipette.dispense(water_amt_wash_buff-(x*1000), working_reagent_reservoir["A"+str(1+6)].top(3))
-    remove_tip(left_pipette, protocol.params.dry_run)
+    
     for i in range (0, 7):
         left_pipette.pick_up_tip()
         left_pipette.mix(5, 900, working_reagent_reservoir["A"+str(i+1)])
