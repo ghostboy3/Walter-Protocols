@@ -1,6 +1,6 @@
 # CHANGE TITLE IF NEEDED IN PROTOCOL NAME
 metadata = {
-    "protocolName": "BCA Assay",
+    "protocolName": "BCA protocol",
     "author": "Sasha",
     "description": "First Used Tip box is in position A3; Place Empty 1.5 mL Tubes in slots B1-C1 for standards, BSA Standard (2mg/mL) should be added to a 1.5 mL tube, need 550µL; 100µL of each unknown sample should be aliquoted to the sample stock plate going down a column starting at A1 "
     "calculate volumes needed of reagent A and B before hand to fill falcon tube and microcentrifuge tube with the appropriate volumes, reagent A should not exceed 20 mL, Reagent A Loading should be 200µL * ((number of columns +1) * 8)+8), Reagent B should be Reagent A Volume / 50 ",
@@ -35,37 +35,38 @@ def add_parameters(parameters):
     )
 
 
-def run(assay):
+def run(protocol: protocol_api.ProtocolContext):
 
-    number_samples = assay.params.number_samples
+    number_samples = protocol.params.number_samples
     # LOADING TIPS
     tips200 = [
-        assay.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot)
+        protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot)
         for slot in ["A3", "B3", "C3"]
     ]
-    chute = assay.load_waste_chute()
+    chute = protocol.load_waste_chute()
 
     # LOADING PIPETTES
-    left_pipette = assay.load_instrument(
+    left_pipette = protocol.load_instrument(
         "flex_1channel_1000", "left", tip_racks=tips200
     )
-    right_pipette = assay.load_instrument(
+    right_pipette = protocol.load_instrument(
         "flex_8channel_1000", "right", tip_racks=tips200
     )
 
     # LOADING LABWARE
-    working_reagent_reservoir = assay.load_labware("nest_12_reservoir_15ml", "B1")
-    heatshaker = assay.load_module("heaterShakerModuleV1", "D1")
-    sample_plate = assay.load_labware("corning_96_wellplate_360ul_flat", "C2")
-    reagent_stock = assay.load_labware(
+    working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "B1")
+    heatshaker = protocol.load_module("heaterShakerModuleV1", "D1")
+    sample_plate = protocol.load_labware("corning_96_wellplate_360ul_flat", "C2")
+    reagent_stock = protocol.load_labware(
         "opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "A1"
     )
-    sample_stock = assay.load_labware(
+    lid = protocol.load_labware("opentrons_tough_pcr_auto_sealing_lid", location= "C1")
+    sample_stock = protocol.load_labware(
         "opentrons_96_wellplate_200ul_pcr_full_skirt", "B2"
     )
     staging_slots = ["A4", "B4", "C4"]
     staging_racks = [
-        assay.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot)
+        protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot)
         for slot in staging_slots
     ]
 
@@ -73,31 +74,31 @@ def run(assay):
 
     count = 0
     # DEFINING LIQUIDS
-    bsa_stock = assay.define_liquid(
-        "BSA Stock", "BSA Stock from Pierce BCA Protein Assay ; 2mg/mL", "#FF6433"
+    bsa_stock = protocol.define_liquid(
+        "BSA Stock", "BSA Stock from Pierce BCA Protein protocol ; 2mg/mL", "#FF6433"
     )
-    bsa_plate = assay.load_labware(
+    bsa_plate = protocol.load_labware(
         "opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A2"
     )
 
-    Reagent_A = assay.define_liquid(
+    Reagent_A = protocol.define_liquid(
         "Reagent_A", "Reagent A for Working Reagent, will add 50 parts", "#FDF740"
     )
-    Reagent_B = assay.define_liquid(
+    Reagent_B = protocol.define_liquid(
         "Reagent_B", "Reagent B for Working Reagent, will add 1 part", "#408AFD"
     )
 
-    water = assay.define_liquid(
+    water = protocol.define_liquid(
         "Diluent", "Diluent for standards, same as diluent in sample", "#D2E2FB"
     )
 
-    sample = assay.define_liquid(
+    sample = protocol.define_liquid(
         "sample",
         "Unknown Samples from CSV File",
         "#40FDF4",
     )
 
-    empty_tube = assay.define_liquid("empty", "Empty Tubes for Standards", "#D3D3D3")
+    empty_tube = protocol.define_liquid("empty", "Empty Tubes for Standards", "#D3D3D3")
 
     # LOADING LIQUIDS
     reagent_stock["A1"].load_liquid(water, 9000)
@@ -406,22 +407,28 @@ def run(assay):
         # Prep HeaterShaker
 
     heatshaker.open_labware_latch()
-    assay.move_labware(sample_plate, heatshaker, use_gripper=True)
-    # assay.pause("Place lid on well plate")
+    
+    #move labware with lid onto hs_mod
+    protocol.deck.__delitem__('C2')
+    new_sample_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', 'C2')
+    protocol.move_labware(new_sample_plate, new_location=heatshaker, use_gripper=True)
+    protocol.move_labware(labware = lid, new_location=new_sample_plate, use_gripper=True)
+    # protocol.pause("Place lid on well plate"
     heatshaker.close_labware_latch()
     heatshaker.set_and_wait_for_temperature(37)
     heatshaker.set_and_wait_for_shake_speed(400)
 
     # Shake For 30 Seconds
-    assay.delay(minutes=0.5)
+    protocol.delay(minutes=0.5)
     heatshaker.deactivate_shaker()
 
-    assay.comment("\n---------------25 Minute Incubation----------------\n\n")
-    assay.delay(minutes=25)
+    protocol.comment("\n---------------25 Minute Incubation----------------\n\n")
+    protocol.delay(minutes=25)
 
     # Deactivating Heatshaker
     heatshaker.deactivate_heater()
 
     heatshaker.open_labware_latch()
-    assay.move_labware(sample_plate, "C2", use_gripper=True)
+    protocol.move_labware(lid, "C1", use_gripper=True)
+    protocol.move_labware(new_sample_plate, "C2", use_gripper=True)
     heatshaker.close_labware_latch()

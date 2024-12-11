@@ -134,7 +134,7 @@ def get_wash_buffer_vols(total_buffer_amt):
                   "water": water}
     return final_vols
 
-print(get_eq_buffer_vols(5000, 300))
+print(get_eq_buffer_vols(5800, 300))
 print(get_binding_buffer_vols(5000, 300))
 print(get_wash_buffer_vols(5000))
 

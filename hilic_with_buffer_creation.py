@@ -167,9 +167,9 @@ def run(protocol: protocol_api.ProtocolContext):
     
     bead_amt = (num_samples)*25     #µl
     protein_sample_amt = 40#protocol.params.protein_sample_amt     # amount of protein per sample (µl)
-    equilibartion_buffer_amt = (300*8*(math.ceil(num_samples%8)) + 1000)/1000       #ml
-    wash_buffer_amt = (300*8*(math.ceil(num_samples%8)) + 1000)/1000       #ml
-    binding_buffer_amt = (40*8*(math.ceil(num_samples%8)) + 500)/1000       #ml
+    equilibartion_buffer_amt = (300*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
+    wash_buffer_amt = (300*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
+    binding_buffer_amt = (40*8*(math.ceil(num_samples/8)) + 500)/1000       #ml
     digestion_buffer_per_sample_amt = 100#protocol.params.digestion_buffer_per_sample_amt       #100-150µl
     
     #loading
@@ -388,7 +388,7 @@ def run(protocol: protocol_api.ProtocolContext):
             left_pipette.aspirate(get_eq_buffer_vols((equilibartion_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['acn'], acn_location)
             left_pipette.dispense(get_eq_buffer_vols((equilibartion_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['acn'], working_reagent_reservoir["A"+str(i+1)])
             #binding buffer
-            acn_amt_binding_buff = get_binding_buffer_vols((equilibartion_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['acn']
+            acn_amt_binding_buff = get_binding_buffer_vols((binding_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['acn']
             for x in range (0, math.ceil(acn_amt_binding_buff/1000)):   #incase volume is over 1000
                 if x !=math.ceil(acn_amt_binding_buff/1000)-1:
                     left_pipette.aspirate(1000, acn_location)
@@ -440,7 +440,7 @@ def run(protocol: protocol_api.ProtocolContext):
                     left_pipette.aspirate(aa_amt_eq_buff-(x*1000), ammoniumAcetate_location)
                     left_pipette.dispense(aa_amt_eq_buff-(x*1000), working_reagent_reservoir["A"+str(i+1)].top(3))            
             #binding buffer
-            aa_amt_binding_buff = get_binding_buffer_vols((equilibartion_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['ammonium_acetate']
+            aa_amt_binding_buff = get_binding_buffer_vols((binding_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['ammonium_acetate']
             for x in range (0, math.ceil(aa_amt_binding_buff/1000)):   #incase volume is over 1000
                 if x !=math.ceil(aa_amt_binding_buff/1000)-1:
                     left_pipette.aspirate(1000, ammoniumAcetate_location)
@@ -483,7 +483,7 @@ def run(protocol: protocol_api.ProtocolContext):
                     left_pipette.aspirate(water_amt_eq_buff-(x*1000), water_location)
                     left_pipette.dispense(water_amt_eq_buff-(x*1000), working_reagent_reservoir["A"+str(i+1)].top(3))             #binding buffer
             #binding buffer
-            water_amt_binding_buff = get_binding_buffer_vols((equilibartion_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['water']
+            water_amt_binding_buff = get_binding_buffer_vols((binding_buffer_amt*1000)-(10000*(i)), protocol.params.ammoniumAcetate_conc)['water']
             for x in range (0, math.ceil(water_amt_binding_buff/1000)):   #incase volume is over 1000
                 if x !=math.ceil(water_amt_binding_buff/1000)-1:
                     left_pipette.aspirate(1000, water_location)
