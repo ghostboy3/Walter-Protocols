@@ -210,7 +210,6 @@ def run(protocol: protocol_api.ProtocolContext):
     buffer_tube_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "C2", "new solution rack")
     buffer_tube_rack["A1"].load_liquid(digestion_buffer, digestion_buffer_per_sample_amt*num_samples)
     dig_buffer_location = buffer_tube_rack["A1"]
-    #FIX LOCATIONS
     water_location = buffer_tube_rack["A3"]
     acn_location = buffer_tube_rack["A4"]
     ammoniumAcetate_location = buffer_tube_rack["B3"]
@@ -372,10 +371,10 @@ def run(protocol: protocol_api.ProtocolContext):
             for x in range (0, math.ceil(vol/1000)):
                 if x != math.ceil(vol/1000)-1:  #not last one yet
                     left_pipette.aspirate(1000, start_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A" +str(end_location+i)])
+                    left_pipette.dispense(1000, working_reagent_reservoir["A" +str(end_location+i)].top(-5))
                 else:
                     left_pipette.aspirate(vol-(1000*x), start_location)
-                    left_pipette.dispense(vol-(1000*x),working_reagent_reservoir["A" +str(end_location+i)])
+                    left_pipette.dispense(vol-(1000*x),working_reagent_reservoir["A" +str(end_location+i)].top(-5))
     
     protocol.comment("-------------BUFFER CREATION ---------------")
     channel_max_vol = 10000 #each channel can hold up to 10000 ul
@@ -454,10 +453,12 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment(str(water_wash_vols))
     protocol.comment("\n"*10)
 
-    
-    for i in range (0, 7):
+    for i in range [acn_eq_vols, acn_binding_vols, acn_wash_vols]:
         left_pipette.pick_up_tip()
-        left_pipette.mix(5, 900, working_reagent_reservoir["A"+str(i+1)])
+        for x in range (0, len(i)):
+            left_pipette.mix(3, 900, working_reagent_reservoir["A"+str(1+i*3+x)].bottom().move(types.Point(x=0, y=-20, z=3)))
+            left_pipette.mix(3, 900, working_reagent_reservoir["A"+str(1+i*3+x)].bottom().move(types.Point(x=0, y=0, z=3)))
+            left_pipette.mix(3, 900, working_reagent_reservoir["A"+str(1+i*3+x)].bottom().move(types.Point(x=0, y=20, z=3)))
         remove_tip(left_pipette, protocol.params.dry_run)
     
     
@@ -483,8 +484,10 @@ def run(protocol: protocol_api.ProtocolContext):
             # for x in range (0,3):
             #     left_pipette.aspirate(bead_amt-5, bead_storage.bottom(1))
             #     left_pipette.dispense(bead_amt-5, bead_storage.bottom(1))
-                
-            left_pipette.mix(3, bead_amt-5, bead_storage.bottom(1))
+            if i%3==0:
+                remove_tip(left_pipette, protocol.params.dry_run)
+                pick_up(left_pipette)
+                left_pipette.mix(3, bead_amt-5, bead_storage.bottom(1))
             
             left_pipette.aspirate(25, bead_storage.bottom(1), 0.1)
             left_pipette.dispense(24, reagent_plate.wells()[i].bottom(), 0.1)
