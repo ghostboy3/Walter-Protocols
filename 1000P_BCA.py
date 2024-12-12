@@ -412,6 +412,9 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.deck.__delitem__('C2')
     new_sample_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', 'C2')
     protocol.move_labware(new_sample_plate, new_location=heatshaker, use_gripper=True)
+    heatshaker.close_labware_latch()
+    heatshaker.open_labware_latch()
+    new_sample_plate.set_offset(x=0.00, y=0.00, z=30)
     protocol.move_labware(labware = lid, new_location=new_sample_plate, use_gripper=True)
     # protocol.pause("Place lid on well plate"
     heatshaker.close_labware_latch()
