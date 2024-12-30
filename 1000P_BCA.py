@@ -33,6 +33,13 @@ def add_parameters(parameters):
         maximum=24,
         unit="samples",
     )
+    parameters.add_bool(
+        variable_name="add_lid",
+        display_name="Add a lid",
+        description="Add a lid during incubation",
+        default=True
+    )
+
 
 
 def run(protocol: protocol_api.ProtocolContext):
@@ -60,7 +67,8 @@ def run(protocol: protocol_api.ProtocolContext):
     reagent_stock = protocol.load_labware(
         "opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "A1"
     )
-    lid = protocol.load_labware("opentrons_tough_pcr_auto_sealing_lid", location= "C1")
+    if protocol.params.add_lid:
+        lid = protocol.load_labware("opentrons_tough_pcr_auto_sealing_lid", location= "C1")
     sample_stock = protocol.load_labware(
         "opentrons_96_wellplate_200ul_pcr_full_skirt", "B2"
     )
@@ -409,13 +417,16 @@ def run(protocol: protocol_api.ProtocolContext):
     heatshaker.open_labware_latch()
     
     #move labware with lid onto hs_mod
-    protocol.deck.__delitem__('C2')
-    new_sample_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', 'C2')
-    protocol.move_labware(new_sample_plate, new_location=heatshaker, use_gripper=True)
-    heatshaker.close_labware_latch()
-    heatshaker.open_labware_latch()
-    new_sample_plate.set_offset(x=0.00, y=0.00, z=30)
-    protocol.move_labware(labware = lid, new_location=new_sample_plate, use_gripper=True)
+    if protocol.params.add_lid:
+        protocol.deck.__delitem__('C2')
+        new_sample_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', 'C2')
+        protocol.move_labware(new_sample_plate, new_location=heatshaker, use_gripper=True)
+        heatshaker.close_labware_latch()
+        heatshaker.open_labware_latch()
+        new_sample_plate.set_offset(x=0.00, y=0.00, z=30)
+        protocol.move_labware(labware = lid, new_location=new_sample_plate, use_gripper=True)
+    else:
+        protocol.move_labware(labware = sample_plate, new_location=heatshaker, use_gripper=True)
     # protocol.pause("Place lid on well plate"
     heatshaker.close_labware_latch()
     heatshaker.set_and_wait_for_temperature(37)
@@ -430,8 +441,12 @@ def run(protocol: protocol_api.ProtocolContext):
 
     # Deactivating Heatshaker
     heatshaker.deactivate_heater()
-
     heatshaker.open_labware_latch()
-    protocol.move_labware(lid, "C1", use_gripper=True)
-    protocol.move_labware(new_sample_plate, "C2", use_gripper=True)
-    heatshaker.close_labware_latch()
+    if protocol.params.add_lid:
+        protocol.move_labware(lid, "C1", use_gripper=True)
+        protocol.move_labware(new_sample_plate, "C2", use_gripper=True)
+        heatshaker.close_labware_latch()
+    else:
+        protocol.move_labware(sample_plate, "C2", use_gripper=True)
+        heatshaker.close_labware_latch()
+
