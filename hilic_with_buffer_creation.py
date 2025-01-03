@@ -26,6 +26,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         maximum=45,
         unit="samples"
     )
+    # Keep 300 as default
     parameters.add_int(
         variable_name="ammoniumAcetate_conc",
         display_name="Concentration Ammonium Acetate",
@@ -35,19 +36,22 @@ def add_parameters(parameters: protocol_api.Parameters):
         maximum=1000,
         unit="mM"
     )
-
+    # Default true
     parameters.add_bool(
         variable_name="manual_load_beads",
         display_name="Load beads with walt",
         description="Use walt to load beads",
         default=True
     )
+    #Default true
     parameters.add_bool(
         variable_name="create_buffers",
         display_name="Create buffers with Walt",
         description="Use walt to create/mix binding, wash, and equilibration buffers",
         default=True
     )
+    # ADD REDUCTION AND ALKYLATION AS A PARAMETER 
+    
     parameters.add_bool(
         variable_name="dry_run",
         display_name="Dry Run",

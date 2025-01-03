@@ -16,12 +16,6 @@ from opentrons import types
 
 ####CHANGE NUMBER OF SAMPLES HERE####
 
-# def mixing(volume, location):
-# right_pipette.pick_up_tip()
-# right_pipette.mix(5, volume, location)
-# right_pipette.drop_tip(chute)
-
-
 def add_parameters(parameters):
 
     parameters.add_int(
@@ -39,18 +33,35 @@ def add_parameters(parameters):
         description="Add a lid during incubation",
         default=True
     )
+    parameters.add_bool(
+        variable_name="dry_run",
+        display_name="Dry Run",
+        description="Return tips",
+        default=False
+    )
 
 
 
 def run(protocol: protocol_api.ProtocolContext):
 
     number_samples = protocol.params.number_samples
+    is_dry_run = protocol.params.dry_run
+     
     # LOADING TIPS
     tips200 = [
         protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot)
         for slot in ["A3", "B3", "C3"]
     ]
     chute = protocol.load_waste_chute()
+    def remove_tip(pipette):
+        if is_dry_run:
+            pipette.return_tip()
+        else:
+            pipette.drop_tip(chute) 
+    def find_aspirate_height(pip, source_well):
+        lld_height = pip.measure_liquid_height(source_well) - source_well.bottom().point.z
+        aspirate_height = max(lld_height - 5, 1)
+        return aspirate_height
 
     # LOADING PIPETTES
     left_pipette = protocol.load_instrument(
@@ -134,10 +145,10 @@ def run(protocol: protocol_api.ProtocolContext):
 
         for i in range(0, 3):
             left_pipette.dispense(
-                25, sample_plate.wells()[drop_off + i].bottom(0), rate=0.25
+                25, sample_plate.wells()[drop_off + i].bottom(0.1), rate=0.25
             )
 
-        left_pipette.drop_tip(chute)
+        remove_tip(left_pipette)
 
         drop_off += 3
         pick_up += 1
@@ -150,14 +161,14 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.aspirate(187.5, bsa_plate["A1"].bottom(2))
     left_pipette.dispense(187.5, bsa_plate["B1"].bottom(4), rate=0.75)
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     left_pipette.pick_up_tip()
     left_pipette.aspirate(62.5, reagent_stock["A1"].bottom(2))
     left_pipette.dispense(62.5, bsa_plate["B1"].bottom(4), rate=0.75)
     left_pipette.mix(3, 100, bsa_plate["B1"].bottom(4))
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     # Vial B : 1000 µg/mL - former vial C
 
@@ -165,7 +176,7 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.aspirate(162.5, bsa_plate["A1"].bottom(2))
     left_pipette.dispense(162.5, bsa_plate["B2"].bottom(4), rate=0.75)
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     left_pipette.pick_up_tip()
     left_pipette.aspirate(162.5, reagent_stock["A1"].bottom(25))
@@ -173,7 +184,7 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.dispense(162.5, bsa_plate["B2"].bottom(4), rate=0.75)
     left_pipette.mix(3, 140, bsa_plate["B2"].bottom(4))
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     # Vial C : 750 µg/mL - former vial D
 
@@ -181,15 +192,14 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.aspirate(87.5, reagent_stock["A1"].bottom(25))
     left_pipette.dispense(87.5, bsa_plate["B3"].bottom(4), rate=0.75)
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
-
+    remove_tip(left_pipette)
     left_pipette.pick_up_tip()
     left_pipette.aspirate(87.5, bsa_plate["B1"].bottom(4))  # Vial A to C (1500 to 750)
     left_pipette.touch_tip()
     left_pipette.dispense(87.5, bsa_plate["B3"].bottom(4), rate=0.75)
     left_pipette.mix(3, 50, bsa_plate["B3"].bottom(4))
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     # Vial D, E, F
 
@@ -205,7 +215,7 @@ def run(protocol: protocol_api.ProtocolContext):
         left_pipette.touch_tip()
         left_pipette.dispense(162.5, vial, rate=0.25)
         left_pipette.touch_tip()
-        left_pipette.drop_tip(chute)
+        remove_tip(left_pipette)
 
     # Vial D : 500 µg/mL - former vial E
 
@@ -214,7 +224,7 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.dispense(162.5, bsa_plate["B4"].bottom(4), rate=0.75)
     left_pipette.mix(3, 150, bsa_plate["B4"].bottom(4))
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     # Vial E: 250 µg/mL - Former vial F
 
@@ -223,7 +233,7 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.dispense(162.5, bsa_plate["B5"].bottom(4), rate=0.75)
     left_pipette.mix(3, 150, bsa_plate["B5"].bottom(4))
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     # Vial F : 125 µg/mL - former vial G
 
@@ -232,7 +242,7 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.dispense(162.5, bsa_plate["B6"].bottom(4), rate=0.75)
     left_pipette.mix(3, 150, bsa_plate["B6"].bottom(4))
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     # Vial G : 25 µg/mL - former vial F
 
@@ -241,14 +251,14 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.touch_tip()
     left_pipette.dispense(200, bsa_plate["C1"].bottom(4), rate=0.75)
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     left_pipette.pick_up_tip()
     left_pipette.aspirate(50, bsa_plate["B6"].bottom(2))
     left_pipette.dispense(50, bsa_plate["C1"].bottom(4), rate=0.75)
     left_pipette.mix(3, 100, bsa_plate["C1"].bottom(4))
     left_pipette.touch_tip()
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
 
     # Standard Loading
 
@@ -262,7 +272,7 @@ def run(protocol: protocol_api.ProtocolContext):
         
         for i in range(1, 4):  # A1,A2,A3
             left_pipette.dispense(25, sample_plate[new + str(i)].bottom(0), 0.25)
-        left_pipette.drop_tip(chute)
+        remove_tip(left_pipette)
 
     # Vial A
     standard_loading("B1", "A")
@@ -291,7 +301,7 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.aspirate(80, reagent_stock["A1"].bottom(20), 0.25)
     for i in range(1, 4):  # A1,A2,A3
         left_pipette.dispense(25, sample_plate["H" + str(i)].bottom(8), 0.25)
-    left_pipette.drop_tip(chute)
+    remove_tip(left_pipette)
     
 
     # Working Reagent Solution Prep
@@ -354,37 +364,37 @@ def run(protocol: protocol_api.ProtocolContext):
     if max_volume >= total_working_reagent_volume >= 9000:
         right_pipette.pick_up_tip()
         right_pipette.mix(5, 1000, working_reagent_reservoir["A1"].bottom(4))
-        right_pipette.drop_tip(chute)
+        remove_tip(right_pipette)
 
     elif total_working_reagent_volume > max_volume:
         if remainder > 9000:
             right_pipette.pick_up_tip()
             right_pipette.mix(5, 1000, working_reagent_reservoir["A1"].bottom(4))
-            right_pipette.drop_tip(chute)
+            remove_tip(right_pipette)
             right_pipette.pick_up_tip()
             right_pipette.mix(5, 1000, working_reagent_reservoir["A2"].bottom(4))
-            right_pipette.drop_tip(chute)
+            remove_tip(right_pipette)
         else:
             if 4000 >= remainder >= 9000:
                 right_pipette.pick_up_tip()
                 right_pipette.mix(5, 1000, working_reagent_reservoir["A1"].bottom(4))
-                right_pipette.drop_tip(chute)
+                remove_tip(right_pipette)
                 right_pipette.pick_up_tip()
                 right_pipette.mix(5, 250, working_reagent_reservoir["A2"].bottom(4))
-                right_pipette.drop_tip(chute)
+                remove_tip(right_pipette)
 
             else:
                 right_pipette.pick_up_tip()
                 right_pipette.mix(5, 1000, working_reagent_reservoir["A1"].bottom(4))
-                right_pipette.drop_tip(chute)
+                remove_tip(right_pipette)
                 right_pipette.pick_up_tip()
                 right_pipette.mix(5, 150, working_reagent_reservoir["A2"].bottom(4))
-                right_pipette.drop_tip(chute)
+                remove_tip(right_pipette)
 
     else:
         right_pipette.pick_up_tip()
         right_pipette.mix(5, 500, working_reagent_reservoir["A1"].bottom(4))
-        right_pipette.drop_tip(chute)
+        remove_tip(right_pipette)
 
     remainder_columns = num_columns - 6
 
@@ -395,21 +405,21 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.pick_up_tip()
             right_pipette.aspirate(working_reagent_volume+2, working_reagent_reservoir["A1"].bottom(1), 0.1)
             right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][i].top(1),0.1)
-            right_pipette.drop_tip()
+            remove_tip(right_pipette)
 
     else:
         for i in range(6):
             right_pipette.pick_up_tip()
             right_pipette.aspirate(working_reagent_volume+2, working_reagent_reservoir["A1"].bottom(1), 0.1)
             right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][i].top(1),0.1)
-            right_pipette.drop_tip()
+            remove_tip(right_pipette)
             
         j = 6
         while j < (6 + remainder_columns):
             right_pipette.pick_up_tip()
             right_pipette.aspirate(working_reagent_volume+2, working_reagent_reservoir["A2"].bottom(1), 0.1)
             right_pipette.dispense(working_reagent_volume,sample_plate.rows()[0][j].top(1),0.1)
-            right_pipette.drop_tip()
+            remove_tip(right_pipette)
             j = j + 1
 
         # Prep HeaterShaker
