@@ -41,7 +41,7 @@ def add_parameters(parameters: protocol_api.Parameters):
 
 
 # protocol run function
-def run(protocol):
+def run(protocol: protocol_api.ProtocolContext):
     # def get_height(volume):
     #     '''
     #     Get's the height of the liquid in the tube
@@ -82,13 +82,13 @@ def run(protocol):
         lld_height = pip.measure_liquid_height(source_well) - source_well.bottom().point.z
         aspirate_height = max(lld_height, 1)
         return aspirate_height
-
+    
     tips1000 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", slot) for slot in ["A3"]]   # add more later
     trash = protocol.load_waste_chute()
 
     left_pipette = protocol.load_instrument("flex_1channel_1000", "left", tip_racks=tips1000)
     # right_pipette = protocol.load_instrument("flex_8channel_50", "right", tip_racks=tips50)
-    
+    # left_pipette.measure_liquid_height
     tube_rack = protocol.load_labware("opentrons_10_tuberack_nest_4x50ml_6x15ml_conical", "D2", "tube rack")
     sample_tube = tube_rack["A1"]
     left_pipette.pick_up_tip()

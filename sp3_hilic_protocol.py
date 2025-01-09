@@ -122,7 +122,7 @@ def get_height_falcon(volume):
     Volume: volume of liquid in tube in ml
     Return: height in mm from the bottom of tube that pipette should go to
     '''
-    if volume <= 1:     # cone part aaa
+    if volume <= 1:     # cone part
         # print(-3.33*(volume**2)+15.45*volume+9.50)
         return -3.33*(volume**2)+15.45*volume+9.50 - 1   #−3.33x2+15.45x+9.50
     else:
