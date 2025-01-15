@@ -200,9 +200,9 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.pick_up_tip()
     for i in range (0, number_samples):
         left_pipette.aspirate(10, sample_location)
-        left_pipette.dispense(10, sample_plate.wells()[i].bottom(1), 0.5)
-        left_pipette.mix(4, 70, sample_plate.wells()[i].bottom(1), 0.3)
-        left_pipette.blow_out(sample_plate.wells()[i].top(-1))
+        left_pipette.dispense(10, sample_stock.wells()[i].bottom(1), 0.5)
+        left_pipette.mix(4, 70, sample_stock.wells()[i].bottom(1), 0.3)
+        left_pipette.blow_out(sample_stock.wells()[i].top(-1))
     remove_tip(left_pipette)
     
     
@@ -256,122 +256,6 @@ def run(protocol: protocol_api.ProtocolContext):
         left_pipette.blow_out(bsa_plate[tube_spots[i]])
         remove_tip(left_pipette)
             
-    
-    # # Vial A : 1500 µg/mL -former vial B
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(150, bsa_plate["A1"].bottom(2), rate=0.2)
-    # left_pipette.dispense(150, bsa_plate["B1"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B1"].top(2))
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-
-    # # Vial B : 1000 µg/mL - former vial C
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(100, bsa_plate["A1"].bottom(2), rate=0.2)
-    # left_pipette.dispense(100, bsa_plate["B2"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B2"].top(2))
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(50, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(50, bsa_plate["B2"].bottom(2), rate=0.2)
-    # left_pipette.mix(3, 100, bsa_plate["B2"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B2"].top(2))    
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # # Vial C : 750 µg/mL - former vial D
-
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(75, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(75, bsa_plate["B3"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B3"].top(2))    
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(75, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(75, bsa_plate["B3"].bottom(2), rate=0.2)
-    # left_pipette.mix(3, 100, bsa_plate["B3"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B3"].top(2))
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # # Vial D : 500 ug/ml
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(50, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(50, bsa_plate["B4"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B4"].top(2))    
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(100, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(100, bsa_plate["B4"].bottom(2), rate=0.2)
-    # left_pipette.mix(3, 100, bsa_plate["B4"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B4"].top(2))    
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-    
-    # # Vial E : 250 ug/ml
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(25, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(25, bsa_plate["B5"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B5"].top(2))
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(125, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(125, bsa_plate["B5"].bottom(2), rate=0.2)
-    # left_pipette.mix(3, 100, bsa_plate["B5"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B5"].top(2))    
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # # Vial F : 125 ug/ml
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(12.5, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(12.5, bsa_plate["B6"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B6"].top(2))
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(137.5, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(137.5, bsa_plate["B6"].bottom(2), rate=0.2)
-    # left_pipette.mix(3, 100, bsa_plate["B6"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["B6"].top(2))
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # # Vial G : 25 ug/ml
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(30, bsa_plate["B6"].bottom(2), rate=0.2)
-    # left_pipette.dispense(30, bsa_plate["C1"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["C1"].top(2))
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # left_pipette.pick_up_tip()
-    # left_pipette.aspirate(120, reagent_stock["A1"].bottom(25), rate=0.2)
-    # left_pipette.dispense(120, bsa_plate["C1"].bottom(2), rate=0.2)
-    # left_pipette.mix(3, 100, bsa_plate["C1"].bottom(2), rate=0.2)
-    # left_pipette.blow_out(bsa_plate["C1"].top(2))
-    # left_pipette.touch_tip()
-    # left_pipette.drop_tip(chute)
-
-    # # # Vial H : 0 ul/ml      ??DELETE??
-    # # left_pipette.pick_up_tip()
-    # # left_pipette.aspirate(150, reagent_stock["A1"].bottom(25), rate=0.2)
-    # # left_pipette.dispense(150, bsa_plate["C2"].bottom(2), rate=0.2)
-    # # left_pipette.mix(3, 100, bsa_plate["C2"].bottom(2), rate=0.2)
-    # # left_pipette.blow_out(bsa_plate["C2"].top(2))    
-    # # left_pipette.touch_tip()
-    # # left_pipette.drop_tip(chute)
-
     def standard_loading(old, new):
         '''
         old: well from sample stock
