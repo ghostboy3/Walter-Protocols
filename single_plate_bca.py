@@ -170,7 +170,7 @@ def run(protocol: protocol_api.ProtocolContext):
     count = 0
     # DEFINING LIQUIDS
     bsa_stock = protocol.define_liquid(
-        "BSA Stock", "BSA Stock from Pierce BCA Protein protocol ; 2mg/mL", "#FF6433"
+        "BSA Stock", "BSA Stock from Pierce BCA Protein protocol ; 1.5mg/mL", "#FF6433"
     )
     bsa_plate = protocol.load_labware(
         "opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A2"
@@ -251,7 +251,8 @@ def run(protocol: protocol_api.ProtocolContext):
     # Standard Preparation  FINISH LATER
     # standard_vol_per_tube = 500#working_sample_vol*replication_mode+50
     standard_vol_per_tube = working_sample_vol*replication_mode+50
-    dilutent_percentages = [0.25, 0.5, 0.625, 0.75, 0.875, 0.9375, 0.9875]
+    # dilutent_percentages = [0.25, 0.5, 0.625, 0.75, 0.875, 0.9375, 0.9875]
+    dilutent_percentages = [1, 2/3, 1/2, 1/3, 1/6, 1/12, 1/60, 0]
     buffer_vols =[]
     bsa_vols = []
     dilutent_pipette_vols = []

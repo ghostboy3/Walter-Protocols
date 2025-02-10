@@ -8,7 +8,7 @@ from opentrons import types
 import time
 
 metadata = {
-    "protocolName": "SP3 HILIC protocol",
+    "protocolName": "SP3 HILIC protocol (creates buffers)",
     "author": "Nico To",
     "description": "HILIC sp3 protocol",
 }
@@ -21,39 +21,22 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="numSamples",
         display_name="Number of Samples",
         description="Number of samples",
-        default=10,
+        default=12,
         minimum=1,
         maximum=24,
         unit="samples"
     )
+    parameters.add_int(
+        variable_name="ammoniumAcetate_conc",
+        display_name="Conc of Ammonium Acetate Stock",
+        description="_______ mM Ammonium Acetate (4.5pH)",
+        default=300,
+        minimum=100,
+        maximum=1000,
+        unit="mM"
+    )
 
-    parameters.add_int(
-        variable_name="equilibartion_buffer_amt",
-        display_name="equilibartion_buffer_amt",
-        description="amount of equilibration buffer stock",
-        default=6,
-        minimum=1,
-        maximum=30,
-        unit="ml"
-    )
-    parameters.add_int(
-        variable_name="binding_buffer_amt",
-        display_name="binding_buffer_amt",
-        description="amount of binding buffer stock",
-        default=6,
-        minimum=1,
-        maximum=30,
-        unit="ml"
-    )
-    parameters.add_int(
-        variable_name="wash_buffer_amt",
-        display_name="wash_buffer_amt",
-        description="amount of wash buffer stock",
-        default=6,
-        minimum=1,
-        maximum=30,
-        unit="ml"
-    )
+
     parameters.add_bool(
         variable_name="dry_run",
         display_name="Dry Run",
@@ -64,7 +47,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="manual_load_beads",
         display_name="Load beads with walt",
         description="Use walt to load beads",
-        default=True
+        default=False
     )
 def send_email(msg):
     url = "http://NicoTo.pythonanywhere.com/send-email"
@@ -116,20 +99,63 @@ def get_height_smalltube(volume):
     else:
         return height
 
-def get_height_falcon(volume):
+def get_height_15ml_falcon(volume):
     '''
     Get's the height of the liquid in the tube
     Volume: volume of liquid in tube in ml
     Return: height in mm from the bottom of tube that pipette should go to
     '''
-    if volume <= 1:     # cone part
+    if volume <= 1:     # cone part aaa
         # print(-3.33*(volume**2)+15.45*volume+9.50)
         return -3.33*(volume**2)+15.45*volume+9.50 - 1   #−3.33x2+15.45x+9.50
     else:
-        return 6.41667*volume +15.1667 -5
+        return 6.41667*volume +15.1667 -5    
+def get_height_50ml_falcon(volume):
+    '''
+    Get's the height of the liquid in the tube
+    Volume: volume of liquid in tube in µl
+    Return: hieght from bottom of tube in millimeters
+    '''
+    height = (1.8*(volume/1000))+12-3
+    return height
+def get_eq_buffer_vols(total_buffer_amt, ammonium_acetate_concentration):
+    '''
+    total_buffer_amt: amount of buffer being created in ul
+    ammonium_acetate_concentration: Concentration of Ammonium acetate 
+    Returns: A dictionary with all the volumes in ul
+    '''
+    acn = total_buffer_amt*0.15     #amount of acetonitrle
+    ammonium_acetate = (total_buffer_amt-acn)*(100/ammonium_acetate_concentration)
+    water = total_buffer_amt-acn-ammonium_acetate
+    final_vols = {"acn": acn,
+                  "ammonium_acetate": ammonium_acetate,
+                  "water": water}
+    return final_vols
 
-# def send_email(msg):
-    
+def get_binding_buffer_vols(total_buffer_amt, ammonium_acetate_concentration):
+    '''
+    total_buffer_amt: amount of buffer being created in ul
+    ammonium_acetate_concentration: Concentration of Ammonium acetate 
+    Returns: A dictionary with all the volumes in ul
+    '''
+    acn = total_buffer_amt*0.30     #amount of acetonitrle
+    ammonium_acetate = (total_buffer_amt-acn)*(200/ammonium_acetate_concentration)
+    water = total_buffer_amt-acn-ammonium_acetate
+    final_vols = {"acn": acn,
+                  "ammonium_acetate": ammonium_acetate,
+                  "water": water}
+    return final_vols
+def get_wash_buffer_vols(total_buffer_amt):
+    '''
+    total_buffer_amt: amount of buffer being created in ul
+    ammonium_acetate_concentration: Concentration of Ammonium acetate 
+    Returns: A dictionary with all the volumes in ul
+    '''
+    acn = total_buffer_amt*0.95     #amount of acetonitrle
+    water = total_buffer_amt-acn
+    final_vols = {"acn": acn,
+                  "water": water}
+    return final_vols
 
 def run(protocol: protocol_api.ProtocolContext):
     #defining variables
@@ -141,11 +167,9 @@ def run(protocol: protocol_api.ProtocolContext):
     
     bead_amt = (num_samples)*25     #µl
     protein_sample_amt = 40#protocol.params.protein_sample_amt     # amount of protein per sample (µl)
-    equilibartion_buffer_amt = protocol.params.equilibartion_buffer_amt       #ml
-    binding_buffer_amt = protocol.params.binding_buffer_amt       #ml
-    wash_buffer_amt = protocol.params.wash_buffer_amt       #ml
-    # abc_amt = protocol.params.abc_amt       #ml
-    # digestion_buffer_stock_amt = protocol.params.digestion_buffer_stock_amt    #µl
+    equilibartion_buffer_amt = (300*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
+    wash_buffer_amt = (300*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
+    binding_buffer_amt = (40*8*(math.ceil(num_samples/8)) + 500)/1000       #ml
     digestion_buffer_per_sample_amt = 100#protocol.params.digestion_buffer_per_sample_amt       #100-150µl
     
     #loading
@@ -186,6 +210,10 @@ def run(protocol: protocol_api.ProtocolContext):
     buffer_tube_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "C2", "new solution rack")
     buffer_tube_rack["A1"].load_liquid(digestion_buffer, digestion_buffer_per_sample_amt*num_samples)
     dig_buffer_location = buffer_tube_rack["A1"]
+    #FIX LOCATIONS
+    water_location = buffer_tube_rack["A3"]
+    acn_location = buffer_tube_rack["A4"]
+    ammoniumAcetate_location = buffer_tube_rack["B3"]
 
     working_reagent_reservoir["A1"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
     working_reagent_reservoir["A2"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
@@ -294,7 +322,7 @@ def run(protocol: protocol_api.ProtocolContext):
                         use_gripper=True
                     )
                 rack_num = 0
-                for slot in ['A4', 'B4', 'C4', 'D4']:
+                for slot in ['A4', 'B4', 'C4']:
                     labware = protocol.deck[slot]
                     if labware and labware.is_tiprack:
                         tips1000[i] = staging_racks[rack_num]
@@ -331,6 +359,108 @@ def run(protocol: protocol_api.ProtocolContext):
             pipette.aspirate(vol, plate.bottom(0.1), rate = 0.2)
             pipette.dispense(vol, plate.bottom().move(types.Point(x=-2, y=0, z=3)), rate = rate)
 
+    
+    def create_buffers(total_vol, start_location, end_location):
+        '''
+        total_vol: list of transfer volumes in ul [vol1, vol2]
+        start_location: location of the acn, aa, or h2o
+        end_location: well number of the first slot for the buffer (1 to 12)
+        '''
+        protocol.comment(str(total_vol))
+        for i in range (0, len(total_vol)):
+            vol = total_vol[i]
+            for x in range (0, math.ceil(vol/1000)):
+                if x != math.ceil(vol/1000)-1:  #not last one yet
+                    left_pipette.aspirate(1000, start_location)
+                    left_pipette.dispense(1000, working_reagent_reservoir["A" +str(end_location+i)])
+                else:
+                    left_pipette.aspirate(vol-(1000*x), start_location)
+                    left_pipette.dispense(vol-(1000*x),working_reagent_reservoir["A" +str(end_location+i)])
+    create_buffers = False
+    if create_buffers:
+        protocol.comment("-------------BUFFER CREATION ---------------")
+        channel_max_vol = 10000 #each channel can hold up to 10000 ul
+        acn_eq_vols = []
+        acn_binding_vols = []
+        acn_wash_vols = []
+        aa_eq_vols = []
+        aa_binding_vols = []
+        water_eq_vols = []
+        water_binding_vols = []
+        water_wash_vols = []
+        #equilibartion buffer
+        for i in range (0, math.ceil((equilibartion_buffer_amt*1000)/channel_max_vol)):
+            #Not on last loop yet
+            if i !=math.ceil((equilibartion_buffer_amt*1000)/channel_max_vol)-1:
+                volumes =get_eq_buffer_vols(channel_max_vol, protocol.params.ammoniumAcetate_conc)
+                acn_eq_vols.append(volumes['acn'])
+                aa_eq_vols.append(volumes['ammonium_acetate'])
+                water_eq_vols.append(volumes['water'])
+            else:
+                volumes =get_eq_buffer_vols((equilibartion_buffer_amt*1000)-(channel_max_vol*i), protocol.params.ammoniumAcetate_conc)
+                acn_eq_vols.append(volumes['acn'])
+                aa_eq_vols.append(volumes['ammonium_acetate'])
+                water_eq_vols.append(volumes['water'])
+        #Binding buffer
+        for i in range (0, math.ceil((binding_buffer_amt*1000)/channel_max_vol)):
+            #Not on last loop yet
+            if i !=math.ceil((binding_buffer_amt*1000)/channel_max_vol)-1:
+                volumes =get_binding_buffer_vols(channel_max_vol, protocol.params.ammoniumAcetate_conc)
+                acn_binding_vols.append(volumes['acn'])
+                aa_binding_vols.append(volumes['ammonium_acetate'])
+                water_binding_vols.append(volumes['water'])
+            else:
+                volumes =get_binding_buffer_vols((equilibartion_buffer_amt*1000)-(channel_max_vol*i), protocol.params.ammoniumAcetate_conc)
+                acn_binding_vols.append(volumes['acn'])
+                aa_binding_vols.append(volumes['ammonium_acetate'])
+                water_binding_vols.append(volumes['water'])
+        #Wash buffer
+        for i in range (0, math.ceil((wash_buffer_amt*1000)/channel_max_vol)):
+            #Not on last loop yet
+            if i !=math.ceil((wash_buffer_amt*1000)/channel_max_vol)-1:
+                volumes =get_wash_buffer_vols(channel_max_vol)
+                acn_wash_vols.append(volumes['acn'])
+                water_wash_vols.append(volumes['water'])
+            else:
+                volumes =get_wash_buffer_vols((equilibartion_buffer_amt*1000)-(channel_max_vol*i))
+                acn_wash_vols.append(volumes['acn'])
+                water_wash_vols.append(volumes['water'])
+        
+        #Loading ACN
+        left_pipette.pick_up_tip()
+        create_buffers(acn_eq_vols, acn_location, 1)
+        create_buffers(acn_binding_vols, acn_location, 4)
+        create_buffers(acn_wash_vols, acn_location, 7)
+        remove_tip(left_pipette, protocol.params.dry_run)
+        
+        #Loading Ammonium Acetate
+        left_pipette.pick_up_tip()
+        create_buffers(aa_eq_vols, ammoniumAcetate_location, 1)
+        create_buffers(aa_binding_vols, ammoniumAcetate_location, 4)
+        remove_tip(left_pipette, protocol.params.dry_run)
+        #Loading H2O
+        left_pipette.pick_up_tip()
+        create_buffers(water_eq_vols, water_location, 1)
+        create_buffers(water_binding_vols, water_location, 4)
+        create_buffers(water_wash_vols, water_location, 7)
+        remove_tip(left_pipette, protocol.params.dry_run)
+        protocol.comment("\n"*10)
+        protocol.comment(str(acn_eq_vols))
+        protocol.comment(str(acn_binding_vols))
+        protocol.comment(str(acn_wash_vols))
+        protocol.comment(str(aa_eq_vols))
+        protocol.comment(str(aa_binding_vols))
+        protocol.comment(str(water_eq_vols))
+        protocol.comment(str(water_binding_vols))
+        protocol.comment(str(water_wash_vols))
+        protocol.comment("\n"*10)
+
+        
+        for i in range (0, 7):
+            left_pipette.pick_up_tip()
+            left_pipette.mix(5, 900, working_reagent_reservoir["A"+str(i+1)])
+            remove_tip(left_pipette, protocol.params.dry_run)
+        
     
     hs_mod.open_labware_latch()
     hs_mod.close_labware_latch()
