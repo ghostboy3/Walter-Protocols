@@ -6,6 +6,7 @@ import json
 from opentrons import types
 # from datetime import datetime, timedelta
 import time
+import datetime
 
 metadata = {
     "protocolName": "SP3 HILIC protocol (creates buffers)",
@@ -283,41 +284,7 @@ def run(protocol: protocol_api.ProtocolContext):
 
         except protocol_api.labware.OutOfTipsError:
             check_tips()
-            pick_up(pip)
-            # pip.tip_racks = tips1000
-
-            # # move all tipracks to chute
-            # for rack in tips1000:
-            #     protocol.move_labware(
-            #         labware=rack,
-            #         new_location=chute,
-            #         use_gripper=True
-            #     )
-            # # check to see if we have tipracks in staging slots
-            # try:
-            #     for i, (new_rack, replace_slot) in enumerate(zip(staging_racks, ["A3","B3","C3"])):
-            #         if protocol.deck[staging_slots[i]]:
-
-            #             protocol.move_labware(
-            #                 labware=new_rack,
-            #                 new_location=replace_slot,
-            #                 use_gripper=True
-            #             )
-            #     tips1000 = staging_racks
-            #     pip.tip_racks = tips1000
-            #     pip.reset_tipracks()
-            #     pip.pick_up_tip()
-
-            # # if not tipracks in staging slot (second iteration), replenish
-            # except:
-            #     # staging_racks = [assay.load_labware('opentrons_flex_96_tiprack_50ul', protocol_api.OFF_DECK) for _ in range(3)]
-            #     tips1000 = [protocol.load_labware('opentrons_flex_96_filtertiprack_200uL', slot) for slot in ["A3","B3","C3"]]
-            #     staging_racks = [protocol.load_labware('opentrons_flex_96_filtertiprack_200uL', slot) for slot in staging_slots]
-            #     protocol.pause('Replace tip racks on deck and on expansion slots')
-            #     pip.reset_tipracks()
-            #     pip.tip_racks=tips1000
-            #     pick_up(pip)
-    
+            pick_up(pip)    
     def check_tips():
         nonlocal tips1000
         nonlocal staging_racks
@@ -400,6 +367,16 @@ def run(protocol: protocol_api.ProtocolContext):
                     left_pipette.aspirate(vol-(1000*x), start_location)
                     left_pipette.dispense(vol-(1000*x),working_reagent_reservoir["A" +str(end_location+i)].top(-5))
                 left_pipette.blow_out(working_reagent_reservoir["A" +str(end_location+i)].top(-5))
+    def delay(seconds):
+        if protocol.params.dry_run:
+            return
+        start_time = datetime.now()
+        protocol.comment(f"Delaying for {seconds} seconds")
+        check_tips()
+        while True:
+            if (datetime.now() - start_time).seconds > seconds:
+                break
+    
     if protocol.params.create_buffers:
         protocol.comment("-------------BUFFER CREATION ---------------")
         channel_max_vol = 10000 #each channel can hold up to 10000 ul
@@ -545,8 +522,7 @@ def run(protocol: protocol_api.ProtocolContext):
 
         protocol.comment("Gentil agitation for 1 minute ("+str(shake_speed)+"rpm)")
         hs_mod.set_and_wait_for_shake_speed(shake_speed)       #1000 rpm
-        check_tips()
-        protocol.delay(seconds=60 if protocol.params.dry_run else 60, msg="1 minute incubation (10 seconds for dry run)")
+        delay(60)
         hs_mod.deactivate_shaker()
         hs_mod.open_labware_latch()
         
@@ -605,11 +581,10 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.set_and_wait_for_shake_speed(1550)       #1100 rpm
     # protocol.pause('''"Tell me when to stop!! (30 min incubation time)''')
     protocol.comment("\n\n"*20)
-    # FIX MATH LATER
     
+    start_time = datetime.now()
     transfer_vol = (math.ceil(num_samples/8))*100 +50       # transfer into each well
     total_dig_buffer = transfer_vol*8
-
     pipette_max = 200
     num_transfers = math.ceil((total_dig_buffer)/(pipette_max))
     well_counter = 0
@@ -622,10 +597,11 @@ def run(protocol: protocol_api.ProtocolContext):
                 aspirate_vol = transfer_vol - (pipette_max*i)
             left_pipette.aspirate(aspirate_vol, dig_buffer_location, 0.25)    
             left_pipette.dispense(aspirate_vol, digestion_buffer_reservoir.wells()[well_counter].bottom(), 0.1)
-    remove_tip(left_pipette, protocol.params.dry_run)  
-        
-    check_tips()
-    protocol.delay(seconds=10 if protocol.params.dry_run else 1500, msg="30 minute incubation (10 seconds for dry run)")
+    remove_tip(left_pipette, protocol.params.dry_run)
+    time_elasped = (datetime.now() - start_time).seconds
+    # 30 minute incubation
+    delay(1800-time_elasped)
+    
     hs_mod.deactivate_shaker()
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
@@ -662,8 +638,7 @@ def run(protocol: protocol_api.ProtocolContext):
         # protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
         # hs_mod.close_labware_latch()
         hs_mod.set_and_wait_for_shake_speed(shake_speed)       #1300 rpm
-        check_tips()
-        protocol.delay(seconds=60 if protocol.params.dry_run else 60, msg="1 minute incubation (10 seconds for dry run)")
+        delay(60)
         hs_mod.deactivate_shaker()
         hs_mod.open_labware_latch()
         protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
