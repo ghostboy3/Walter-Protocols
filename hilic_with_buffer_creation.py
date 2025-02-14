@@ -6,7 +6,7 @@ import json
 from opentrons import types
 # from datetime import datetime, timedelta
 import time
-import datetime
+from datetime import datetime
 
 metadata = {
     "protocolName": "SP3 HILIC protocol (creates buffers)",
@@ -42,7 +42,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="manual_load_beads",
         display_name="Load beads with walt",
         description="Use walt to load beads",
-        default=False
+        default=True
     )
     #Default true
     parameters.add_bool(
@@ -61,7 +61,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="dry_run",
         display_name="Dry Run",
         description="Skip incubation delays and return tips. Don't modify this value unless you're testing stuff.",
-        default=False
+        default=True
     )
 def send_email(msg):
     url = "http://NicoTo.pythonanywhere.com/send-email"
@@ -469,28 +469,32 @@ def run(protocol: protocol_api.ProtocolContext):
     protocol.comment("-------------Equilibration ---------------")
     if protocol.params.manual_load_beads:
 
-        pipette_max = 200
+        pipette_max = 195
         num_transfers = math.ceil((bead_amt*num_samples)/(pipette_max))
         well_counter = 0
         protocol.comment("\nTransfering 25µl HILIC beads into well plate")
         pick_up(left_pipette)
         total_bead_amt = num_samples*25
-        
-        for i in range (0, num_samples):
-            # Small mix before aspirating
-            left_pipette.aspirate(total_bead_amt-5,bead_storage.bottom(1))
-            left_pipette.dispense(total_bead_amt-10,bead_storage.bottom(1))
-            left_pipette.dispense(5, bead_storage.top(-5))
-            left_pipette.blow_out(bead_storage.top(-5))
-            left_pipette.aspirate(25, bead_storage.bottom(1), 0.1)
-            left_pipette.dispense(24, reagent_plate.wells()[i].bottom(), 0.1)
-            left_pipette.dispense(1, reagent_plate.wells()[i].bottom(9),5)
-            left_pipette.blow_out(reagent_plate.wells()[i].bottom(8))
-            total_bead_amt -= 25
+        num_transfers = math.ceil(total_bead_amt / (math.floor((pipette_max-10)/bead_amt)*bead_amt))
+        for i in range (0, num_transfers):
+            if i != num_transfers - 1:      # not on last iteration
+                aspirate_amt = math.floor((pipette_max-10)/bead_amt)*bead_amt
+            else:
+                aspirate_amt = total_bead_amt
+            #mix
+            if total_bead_amt > pipette_max:
+                left_pipette.mix(3, pipette_max, bead_storage, 0.5)
+                left_pipette.blow_out(bead_storage.top())
+            else: 
+                left_pipette.mix(3, total_bead_amt-10, bead_storage, 0.5)
+                left_pipette.blow_out(bead_storage.top())
+            left_pipette.aspirate(aspirate_amt+5, bead_storage.bottom(0.1), rate=0.5)
+            total_bead_amt -= aspirate_amt
+            for x in range (0, math.floor(aspirate_amt/bead_amt)):
+                left_pipette.dispense(bead_amt, reagent_plate.wells()[well_counter].bottom(1), rate=0.5)
+                well_counter += 1
         remove_tip(left_pipette, protocol.params.dry_run)
-
-    #switch tube racks
-    
+        
     protocol.comment("\nPlacing tube on magnetic separator and allowing 10s for microparticles to clear")
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
