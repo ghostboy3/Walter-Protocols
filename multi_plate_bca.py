@@ -53,7 +53,7 @@ def add_parameters(parameters):
         variable_name="number_samples",
         display_name="number_samples",
         description="Number of input samples.",
-        default=24,
+        default=40,
         minimum=1,
         maximum=40,
         unit="samples",
@@ -98,7 +98,7 @@ def add_parameters(parameters):
             {"display_name": "triplicate", "value": 3},
             {"display_name": "duplicate", "value": 2},
         ],
-        default=3,
+        default=2,
     )
 
     parameters.add_bool(
@@ -115,7 +115,7 @@ def run(protocol: protocol_api.ProtocolContext):
     is_dry_run = protocol.params.dry_run
     add_lid = True  # protocol.params.add_lid
     working_sample_vol = protocol.params.working_sample_vol
-    pipette_max = 1000-5
+    pipette_max = 1000
 
     # LOADING TIPS
     tips = [
@@ -172,7 +172,7 @@ def run(protocol: protocol_api.ProtocolContext):
     bsa_stock = protocol.define_liquid(
         "BSA Stock", "BSA Stock from Pierce BCA Protein protocol ; 1.5mg/mL", "#FF6433"
     )
-    bsa_rack = protocol.load_labware(
+    bsa_plate = protocol.load_labware(
         "opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A2"
     )
     Reagent_A = protocol.define_liquid(
@@ -194,22 +194,22 @@ def run(protocol: protocol_api.ProtocolContext):
 
     # LOADING LIQUIDS
     reagent_stock["A1"].load_liquid(water, 9000)
-    bsa_rack["A1"].load_liquid(bsa_stock, 550)
+    bsa_plate["A1"].load_liquid(bsa_stock, 550)
     # reagent_stock["A3"].load_liquid(Reagent_A, 22000)
-    # bsa_rack["D1"].load_liquid(Reagent_B, 1000)
-    bsa_rack["B1"].load_liquid(empty_tube, 1)  # 1500 µg/mL
-    bsa_rack["B2"].load_liquid(empty_tube, 1)  # 1000 µg/mL
-    bsa_rack["B3"].load_liquid(empty_tube, 1)  # 750 µg/mL
-    bsa_rack["B4"].load_liquid(empty_tube, 1)  # 500 µg/mL
-    bsa_rack["B5"].load_liquid(empty_tube, 1)  # 250 µg/mL
-    bsa_rack["B6"].load_liquid(empty_tube, 1)  # 125 µg/mL
-    bsa_rack["C1"].load_liquid(empty_tube, 1)  # 25 µg/mL
-    # bsa_rack["D6"].load_liquid(sample, 1)
+    # bsa_plate["D1"].load_liquid(Reagent_B, 1000)
+    bsa_plate["B1"].load_liquid(empty_tube, 1)  # 1500 µg/mL
+    bsa_plate["B2"].load_liquid(empty_tube, 1)  # 1000 µg/mL
+    bsa_plate["B3"].load_liquid(empty_tube, 1)  # 750 µg/mL
+    bsa_plate["B4"].load_liquid(empty_tube, 1)  # 500 µg/mL
+    bsa_plate["B5"].load_liquid(empty_tube, 1)  # 250 µg/mL
+    bsa_plate["B6"].load_liquid(empty_tube, 1)  # 125 µg/mL
+    bsa_plate["C1"].load_liquid(empty_tube, 1)  # 25 µg/mL
+    # bsa_plate["D6"].load_liquid(sample, 1)
 
     # dye_location = reagent_stock["A3"]
     dilutent_location = reagent_stock["A1"]
-    sample_location = bsa_rack["D6"]
-    bsa_stock_location = bsa_rack["A1"]
+    sample_location = bsa_plate["D6"]
+    bsa_stock_location = bsa_plate["A1"]
     
     heatshaker.open_labware_latch()
     #Diluting Sample
@@ -248,17 +248,6 @@ def run(protocol: protocol_api.ProtocolContext):
                 # right_pipette.blow_out(sample_plate['A' + str(col_num)].top())
                 col_num+=1
             remove_tip(right_pipette)
-    def standard_loading(old, new):
-        """
-        old: well from sample stock
-        new: row letter from sample plate
-        """
-        # left_pipette.pick_up_tip()
-        left_pipette.aspirate(working_sample_vol*replication_mode+5, bsa_rack[old].bottom(1.5), 0.25)
-
-        for i in range(1, replication_mode+1):  # A1,A2,A3
-            left_pipette.dispense(working_sample_vol, sample_plate[new + str(i)].bottom(0.1), 0.25)
-        # remove_tip(left_pipette)
 
     # Standard Preparation  FINISH LATER
     # standard_vol_per_tube = 500#working_sample_vol*replication_mode+50
@@ -279,12 +268,12 @@ def run(protocol: protocol_api.ProtocolContext):
             bsa_vols[serial_dilution_stock_tube] = amt_in_1_over_12_tube*dilutent_percentages[serial_dilution_stock_tube]
             buffer_vols[serial_dilution_stock_tube] =amt_in_1_over_12_tube*(1-dilutent_percentages[serial_dilution_stock_tube])
             bsa_vols.append(0)
-            buffer_vols.append(standard_vol_per_tube*(1-dilutent_percentages[i]) - amt_extra_in_1_over_12_tube*(1-dilutent_percentages[i]))
+            buffer_vols.append(standard_vol_per_tube*(1-dilutent_percentages[i]) + amt_extra_in_1_over_12_tube*(1-dilutent_percentages[i]))
         
         else:
             bsa_vols.append(standard_vol_per_tube*dilutent_percentages[i])
             buffer_vols.append(standard_vol_per_tube*(1-dilutent_percentages[i]))
-
+       
     
     
     
@@ -313,7 +302,7 @@ def run(protocol: protocol_api.ProtocolContext):
             try:        # someties amt_in_tip is 10.0000000001
                 left_pipette.dispense(
                     buffer_vols[well_num],
-                    bsa_rack[tube_spots[well_num]],
+                    bsa_plate[tube_spots[well_num]],
                     0.5,
                 )
                 amt_in_tip -= buffer_vols[well_num]
@@ -324,12 +313,11 @@ def run(protocol: protocol_api.ProtocolContext):
             well_num += 1
     remove_tip(left_pipette)
 
-    rack_order = ["B1", "B2", "B3", "B4", "B5", "B6", "C1"]
-    well_order = ["A", "B", "C", "D", "E", "F", "G"]
+    
     for i in range(0, len(bsa_vols)):
         left_pipette.pick_up_tip()
         if bsa_vols[i] == 0:
-            left_pipette.aspirate(amt_extra_in_1_over_12_tube, bsa_rack[tube_spots[serial_dilution_stock_tube]], 0.5)
+            left_pipette.aspirate(amt_extra_in_1_over_12_tube, bsa_plate[tube_spots[serial_dilution_stock_tube]], 0.5)
         else:            
             left_pipette.aspirate(
                 bsa_vols[i],
@@ -338,28 +326,40 @@ def run(protocol: protocol_api.ProtocolContext):
             )
         left_pipette.dispense(
             bsa_vols[i],
-            bsa_rack[tube_spots[i]],
+            bsa_plate[tube_spots[i]],
             0.5,
         )
-        left_pipette.mix(2, standard_vol_per_tube - 10, bsa_rack[tube_spots[i]])
-        standard_loading(rack_order[i], well_order[i])
-        # left_pipette.blow_out(bsa_rack[tube_spots[i]])
+        left_pipette.mix(2, standard_vol_per_tube - 10, bsa_plate[tube_spots[i]])
+        left_pipette.blow_out(bsa_plate[tube_spots[i]])
         remove_tip(left_pipette)
 
-    # # Vial A
-    # standard_loading("B1", "A")
-    # # Vial B
-    # standard_loading("B2", "B")
-    # # Vial C
-    # standard_loading("B3", "C")
-    # # Vial D
-    # standard_loading("B4", "D")
-    # # Vial E
-    # standard_loading("B5", "E")
-    # # Vial F
-    # standard_loading("B6", "F")
-    # # Vial G
-    # standard_loading("C1", "G")
+
+    def standard_loading(old, new):
+        """
+        old: well from sample stock
+        new: row letter from sample plate
+        """
+        left_pipette.pick_up_tip()
+        left_pipette.aspirate(working_sample_vol*replication_mode+5, bsa_plate[old].bottom(1.5), 0.25)
+
+        for i in range(1, replication_mode+1):  # A1,A2,A3
+            left_pipette.dispense(working_sample_vol, sample_plate[new + str(i)].bottom(0.1), 0.25)
+        remove_tip(left_pipette)
+
+    # Vial A
+    standard_loading("B1", "A")
+    # Vial B
+    standard_loading("B2", "B")
+    # Vial C
+    standard_loading("B3", "C")
+    # Vial D
+    standard_loading("B4", "D")
+    # Vial E
+    standard_loading("B5", "E")
+    # Vial F
+    standard_loading("B6", "F")
+    # Vial G
+    standard_loading("C1", "G")
     # Vial H: Blank
     left_pipette.pick_up_tip()
     vol_in_15_facon-=working_sample_vol*replication_mode+5
@@ -377,9 +377,8 @@ def run(protocol: protocol_api.ProtocolContext):
         working_reagent_volume_amt = working_reagent_volume_amt-(working_reagent_volume*8)
         # protocol.comment(str(working_reagent_volume_amt))
         # protocol.comment(str(math.ceil(working_reagent_volume_amt/(10.5*1000))))
-        right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir['A'+str(math.ceil(working_reagent_volume_amt/(10.5*1000)))],0.75)
+        right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir['A'+str(math.ceil(working_reagent_volume_amt/(10.5*1000)))])
         right_pipette.dispense(working_reagent_volume, sample_plate["A"+str(i+1)].top(-1), rate=0.1)
-        right_pipette.blow_out(sample_plate["A"+str(i+1)].top(-1))
         right_pipette.blow_out(sample_plate["A"+str(i+1)].top(-1))
     remove_tip(right_pipette)
 
