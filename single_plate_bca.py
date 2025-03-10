@@ -213,7 +213,7 @@ def run(protocol: protocol_api.ProtocolContext):
     
     heatshaker.open_labware_latch()
     #Diluting Sample
-    diluted_sample_offset = 5
+    diluted_sample_offset = 6
     if protocol.params.dulute_with_walt:
         left_pipette.pick_up_tip()
         vol_in_15_facon = get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
@@ -230,7 +230,7 @@ def run(protocol: protocol_api.ProtocolContext):
             left_pipette.blow_out(dilutent_location.top())
             left_pipette.aspirate(aspirate_vol+5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 1)
             for x in range (0, math.floor(aspirate_vol/protocol.params.buffer_vol)):
-                left_pipette.dispense(protocol.params.buffer_vol, sample_stock.wells()[well_counter + 40], 0.75)
+                left_pipette.dispense(protocol.params.buffer_vol, sample_stock.wells()[well_counter + 48], 0.75)
                 well_counter += 1
             # remove_tip(left_pipette)
             vol_in_15_facon-=aspirate_vol+5
@@ -378,7 +378,7 @@ def run(protocol: protocol_api.ProtocolContext):
         # protocol.comment(str(working_reagent_volume_amt))
         # protocol.comment(str(math.ceil(working_reagent_volume_amt/(10.5*1000))))
         right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir['A'+str(math.ceil(working_reagent_volume_amt/(10.5*1000)))],0.75)
-        right_pipette.dispense(working_reagent_volume, sample_plate["A"+str(i+1)].top(-1), rate=0.1)
+        right_pipette.dispense(working_reagent_volume, sample_plate["A"+str(i+1)].top(-1), rate=0.3)
         right_pipette.blow_out(sample_plate["A"+str(i+1)].top(-1))
         right_pipette.blow_out(sample_plate["A"+str(i+1)].top(-1))
     remove_tip(right_pipette)
