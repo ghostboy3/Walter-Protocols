@@ -198,7 +198,8 @@ def run(protocol: protocol_api.ProtocolContext):
     right_pipette = protocol.load_instrument(
         "flex_8channel_1000", "right", tip_racks=tips
     )
-
+    hs_mod = protocol.load_module("heaterShakerModuleV1", "D1")
+    hs_mod.open_labware_latch()
     # LOADING LABWARE
     working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "D2")
     sample_plate_slots = ["B3", "C1", "C2", "C3"]
@@ -446,5 +447,22 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.dispense(working_reagent_volume, sample_plate[x]["A"+str(i)].top(-1), rate=0.3)
             right_pipette.blow_out(sample_plate[x]["A"+str(i)].top(-1))
             right_pipette.blow_out(sample_plate[x]["A"+str(i)].top(-1))
+        #Move sample plate
+        hs_mod.open_labware_latch()
+        protocol.move_labware(sample_plate[x], hs_mod, use_gripper=True)
+        hs_mod.close_labware_latch()
+        hs_mod.set_and_wait_for_temperature(37)
+        hs_mod.set_and_wait_for_shake_speed(400)
+
+        # Shake For 30 Seconds
+        if is_dry_run:
+            protocol.delay(seconds=10)
+        else:
+            protocol.delay(minutes=0.5)
+        hs_mod.deactivate_shaker()
+        hs_mod.open_labware_latch()
+        protocol.move_labware(sample_plate[x], new_location=protocol_api.OFF_DECK, use_gripper=False)
+
+        
     remove_tip(right_pipette)
 
