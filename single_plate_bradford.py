@@ -279,15 +279,15 @@ def run(protocol: protocol_api.ProtocolContext):
                 col_num+=1
             remove_tip(right_pipette)
     else:
-        right_pipette.pick_up_tip()
         col_num = replication_mode+1
         for i in range (0, math.ceil(number_samples/8)):
+            right_pipette.pick_up_tip()
             right_pipette.aspirate(working_sample_vol*replication_mode+10, sample_stock['A' + str(i+1)],0.5)
             for x in range (0,replication_mode):
                 right_pipette.dispense(working_sample_vol, working_plate['A' + str(col_num)].bottom(0.5), 0.5)
                 # right_pipette.blow_out(working_plate['A' + str(col_num)].top())
                 col_num+=1
-        remove_tip(right_pipette)
+            remove_tip(right_pipette)
     def standard_loading(old, new):
         """
         old: well from sample stock
@@ -337,6 +337,8 @@ def run(protocol: protocol_api.ProtocolContext):
         else:
             dilutent_pipette_vols.append(total_dilutent)
             total_dilutent = buffer_vols[i]
+            if i == len(buffer_vols) - 1:
+                dilutent_pipette_vols.append(total_dilutent)
     # dilutent_pipette_vols.append(total_dilutent)
     
     

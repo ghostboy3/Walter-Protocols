@@ -55,7 +55,7 @@ def add_parameters(parameters):
         variable_name="number_samples",
         display_name="number_samples",
         description="Number of input samples.",
-        default=24,
+        default=10,
         minimum=1,
         maximum=40,
         unit="samples",
@@ -231,7 +231,7 @@ def run(protocol: protocol_api.ProtocolContext):
         num_transfers = math.ceil((number_samples*protocol.params.buffer_vol)/(protocol.params.buffer_vol*math.floor(pipette_max/protocol.params.buffer_vol)))
         well_counter = 0
         col_num = replication_mode+1     # col num for the sample_plate
-        print(num_transfers)
+        # print(num_transfers)
         for i in range (0, num_transfers):
             if i != num_transfers-1:    # not on last iteration
                 aspirate_vol = pipette_max - pipette_max%protocol.params.buffer_vol
@@ -293,23 +293,24 @@ def run(protocol: protocol_api.ProtocolContext):
     serial_dilution_stock_tube = 3      # tubes 0 to 7
     amt_extra_in_1_over_12_tube=0
     for i in range(0, len(dilutent_percentages)):
-        
         if standard_vol_per_tube*dilutent_percentages[i] < 5:
             #add extra to the serial_dilution_stock_tube duluted tube to make up for the 5ul minimum
             amt_extra_in_1_over_12_tube = (1/dilutent_percentages[serial_dilution_stock_tube])*standard_vol_per_tube*dilutent_percentages[i]
             amt_in_1_over_12_tube = standard_vol_per_tube + amt_extra_in_1_over_12_tube
             bsa_vols[serial_dilution_stock_tube] = amt_in_1_over_12_tube*dilutent_percentages[serial_dilution_stock_tube]
-            buffer_vols[serial_dilution_stock_tube] =amt_in_1_over_12_tube*(1-dilutent_percentages[serial_dilution_stock_tube])
+            buffer_vols[serial_dilution_stock_tube] = amt_in_1_over_12_tube*(1-dilutent_percentages[serial_dilution_stock_tube])
             bsa_vols.append(0)
-            buffer_vols.append(standard_vol_per_tube*(1-dilutent_percentages[i]) - amt_extra_in_1_over_12_tube*(1-dilutent_percentages[i]))
-        
+            buffer_vols.append(standard_vol_per_tube-amt_extra_in_1_over_12_tube)
+            # buffer_vols.append(standard_vol_per_tube*(1-dilutent_percentages[i]) - amt_extra_in_1_over_12_tube*(1-dilutent_percentages[i]))
+            # print(standard_vol_per_tube*(1-dilutent_percentages[i]) - amt_extra_in_1_over_12_tube*(1-dilutent_percentages[i]))
+
         else:
             bsa_vols.append(standard_vol_per_tube*dilutent_percentages[i])
             buffer_vols.append(standard_vol_per_tube*(1-dilutent_percentages[i]))
-        
     
     
     print(buffer_vols)
+    print(bsa_vols)
     total_dilutent = 0
     for i in range(0, len(buffer_vols)):
         if total_dilutent + buffer_vols[i] < (pipette_max - 10):
@@ -348,7 +349,7 @@ def run(protocol: protocol_api.ProtocolContext):
                 )
                 amt_in_tip -= buffer_vols[well_num]
             except:
-                print(amt_in_tip)
+                # print(amt_in_tip)
                 break
 
             well_num += 1
@@ -360,7 +361,8 @@ def run(protocol: protocol_api.ProtocolContext):
         left_pipette.pick_up_tip()
         if bsa_vols[i] == 0:
             left_pipette.aspirate(amt_extra_in_1_over_12_tube, bsa_rack[tube_spots[serial_dilution_stock_tube]], 0.5)
-        else:            
+            print(amt_extra_in_1_over_12_tube)
+        else:
             left_pipette.aspirate(
                 bsa_vols[i],
                 bsa_stock_location,
@@ -376,20 +378,6 @@ def run(protocol: protocol_api.ProtocolContext):
         # left_pipette.blow_out(bsa_rack[tube_spots[i]])
         remove_tip(left_pipette)
 
-    # # Vial A
-    # standard_loading("B1", "A")
-    # # Vial B
-    # standard_loading("B2", "B")
-    # # Vial C
-    # standard_loading("B3", "C")
-    # # Vial D
-    # standard_loading("B4", "D")
-    # # Vial E
-    # standard_loading("B5", "E")
-    # # Vial F
-    # standard_loading("B6", "F")
-    # # Vial G
-    # standard_loading("C1", "G")
     # Vial H: Blank
     left_pipette.pick_up_tip()
     vol_in_15_facon-=working_sample_vol*replication_mode+5

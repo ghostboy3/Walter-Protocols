@@ -92,6 +92,15 @@ def add_parameters(parameters):
         unit="ul",
     )
     parameters.add_int(
+        variable_name="tip_type",
+        display_name="types of tips",
+        choices=[
+            {"display_name": "1000ul", "value": 1000},
+            {"display_name": "200ul", "value": 200},
+        ],
+        default=200,
+    )
+    parameters.add_int(
         variable_name="replication_mode",
         display_name="Replication Mode",
         choices=[
@@ -114,7 +123,7 @@ def run(protocol: protocol_api.ProtocolContext):
     number_samples = protocol.params.number_samples
     is_dry_run = protocol.params.dry_run
     working_sample_vol = protocol.params.working_sample_vol
-    pipette_max = 1000-5
+    pipette_max = 200-5
 
     # LOADING TIPS
     tips = [
@@ -155,7 +164,7 @@ def run(protocol: protocol_api.ProtocolContext):
                 if protocol.deck['D4'] == None:
                     protocol.comment("No tip box detected in slot D4.")
                     staging_slots = ['A4', 'B4', 'C4', 'D4']
-                    staging_racks = [protocol.load_labware('opentrons_flex_96_filtertiprack_200uL',
+                    staging_racks = [protocol.load_labware('opentrons_flex_96_filtertiprack_1000uL',
                                       slot) for slot in staging_slots]
                 pass
             else:
@@ -275,7 +284,9 @@ def run(protocol: protocol_api.ProtocolContext):
     if protocol.params.dulute_with_walt:
         pick_up(left_pipette)
         vol_in_15_facon = get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
-        num_transfers = math.ceil((number_samples*protocol.params.buffer_vol)/pipette_max)
+        # num_transfers = math.ceil((number_samples*protocol.params.buffer_vol)/pipette_max)
+        num_transfers = math.ceil((number_samples*protocol.params.buffer_vol)/(protocol.params.buffer_vol*math.floor(pipette_max/protocol.params.buffer_vol)))
+
         well_counter = 0
         col_num = 1#replication_mode+1     # col num for the sample_plate
         # col_num = replication_mode+1     # col num for the sample_plate
@@ -355,51 +366,104 @@ def run(protocol: protocol_api.ProtocolContext):
         else:
             dilutent_pipette_vols.append(total_dilutent)
             total_dilutent = buffer_vols[i]
+            if i == len(buffer_vols) - 1:
+                dilutent_pipette_vols.append(total_dilutent)
     # dilutent_pipette_vols.append(total_dilutent)
     
-    
+    print(buffer_vols)
     tube_spots = ["B1", "B2", "B3", "B4", "B5", "B6", "C1"]
     well_num = 0
     pick_up(left_pipette)
-    for i in range(0, len(dilutent_pipette_vols)):
-        vol_in_15_facon -= dilutent_pipette_vols[i]+10
-        left_pipette.aspirate(
-            dilutent_pipette_vols[i] + 10, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.5
-        )
-        amt_in_tip = dilutent_pipette_vols[i] + 10
-        while amt_in_tip > 10:
-            try:        # someties amt_in_tip is 10.0000000001
-                left_pipette.dispense(
-                    buffer_vols[well_num],
-                    bsa_rack[tube_spots[well_num]],
-                    0.5,
-                )
-                amt_in_tip -= buffer_vols[well_num]
-            except:
-                print(amt_in_tip)
-                break
+    if protocol.params.tip_type == 1000:        #P1000 tips
+        for i in range(0, len(dilutent_pipette_vols)):
+            vol_in_15_facon -= dilutent_pipette_vols[i]+10
             
-            well_num += 1
+            left_pipette.aspirate(
+                dilutent_pipette_vols[i] + 10, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.5
+            )
+            amt_in_tip = dilutent_pipette_vols[i] + 10
+            while amt_in_tip > 10:
+                try:        # someties amt_in_tip is 10.0000000001
+                    left_pipette.dispense(
+                        buffer_vols[well_num],
+                        bsa_rack[tube_spots[well_num]],
+                        0.5,
+                    )
+                    amt_in_tip -= buffer_vols[well_num]
+                except:
+                    print(amt_in_tip)
+                    break
+                
+                well_num += 1
+    else:
+        for i in range (0, len(buffer_vols)):
+            vol_in_15_facon -= buffer_vols[i]
+            transfer_amt = buffer_vols[i]
+            for x in range (0, math.ceil(transfer_amt/pipette_max)):
+                if x ==math.ceil(transfer_amt/pipette_max) - 1:
+                    if buffer_vols[i]%pipette_max != 0:
+                        left_pipette.aspirate(buffer_vols[i]%pipette_max, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.5)
+                        left_pipette.dispense(
+                                    buffer_vols[i]%pipette_max,
+                                    bsa_rack[tube_spots[i]],
+                                    0.5,
+                                )
+                    else:
+                        left_pipette.aspirate(pipette_max, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.5)
+                        left_pipette.dispense(
+                                    pipette_max,
+                                    bsa_rack[tube_spots[i]],
+                                    0.5,
+                                )
+                else:
+                    left_pipette.aspirate(pipette_max, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.5)
+                    left_pipette.dispense(
+                                pipette_max,
+                                bsa_rack[tube_spots[i]],
+                                0.5,
+                            )
     remove_tip(left_pipette)
-
+    print (bsa_vols)
     rack_order = ["B1", "B2", "B3", "B4", "B5", "B6", "C1"]
     well_order = ["A", "B", "C", "D", "E", "F", "G"]
     for i in range(0, len(bsa_vols)):
         pick_up(left_pipette)
         if bsa_vols[i] == 0:
             left_pipette.aspirate(amt_extra_in_1_over_12_tube, bsa_rack[tube_spots[serial_dilution_stock_tube]], 0.5)
-        else:            
-            left_pipette.aspirate(
+            left_pipette.dispense(
                 bsa_vols[i],
-                bsa_stock_location,
+                bsa_rack[tube_spots[i]],
                 0.5,
             )
-        left_pipette.dispense(
-            bsa_vols[i],
-            bsa_rack[tube_spots[i]],
-            0.5,
-        )
-        left_pipette.mix(2, standard_vol_per_tube - 10, bsa_rack[tube_spots[i]])
+        else:
+            transfer_amt = bsa_vols[i]
+            for x in range (0, math.ceil(bsa_vols[i]/pipette_max)):     
+                if x == math.ceil(bsa_vols[i]/pipette_max) - 1:
+                    left_pipette.aspirate(
+                        transfer_amt%pipette_max,
+                        bsa_stock_location,
+                        0.5,
+                    )
+                    left_pipette.dispense(
+                        transfer_amt%pipette_max,
+                        bsa_rack[tube_spots[i]],
+                        0.5,
+                    )
+                else:
+                    left_pipette.aspirate(
+                        pipette_max,
+                        bsa_stock_location,
+                        0.5,
+                    )
+                    left_pipette.dispense(
+                        pipette_max,
+                        bsa_rack[tube_spots[i]],
+                        0.5,
+                    )
+        if standard_vol_per_tube > pipette_max:
+            left_pipette.mix(3, pipette_max, bsa_rack[tube_spots[i]])
+        else:
+            left_pipette.mix(2, standard_vol_per_tube - 10, bsa_rack[tube_spots[i]])
         standard_loading(rack_order[i], well_order[i])
         # left_pipette.blow_out(bsa_rack[tube_spots[i]])
         remove_tip(left_pipette)
