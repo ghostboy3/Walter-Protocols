@@ -53,7 +53,7 @@ def get_vol_15ml_falcon(height):
 def add_parameters(parameters):
     parameters.add_int(
         variable_name="number_samples",
-        display_name="number_samples",
+        display_name="Number of Samples",
         description="Number of input samples.",
         default=10,
         minimum=1,
@@ -70,7 +70,7 @@ def add_parameters(parameters):
         variable_name="sample_vol",
         display_name="Amount of Sample",
         description="Amount of sample required in the duilution (only required if dilute_with_walt is True)",
-        default=6,
+        default=10,
         minimum=5,
         maximum=200,
         unit="ul",
@@ -79,7 +79,7 @@ def add_parameters(parameters):
         variable_name="buffer_vol",
         display_name="Amount of Buffer",
         description="Amount of buffer required in the duilution (only required if dilute_with_walt is True)",
-        default=144,
+        default=90,
         minimum=5,
         maximum=200,
         unit="ul",
@@ -102,6 +102,15 @@ def add_parameters(parameters):
         ],
         default=3,
     )
+    parameters.add_int(
+        variable_name="incubation_time",
+        display_name="Incubation Time",
+        description="Incubation time",
+        default=25,
+        minimum=0,
+        maximum=120,
+        unit="minutes",
+    )
     # parameters.add_int(
     #     variable_name="tip_type",
     #     display_name="types of tips",
@@ -114,7 +123,7 @@ def add_parameters(parameters):
     parameters.add_bool(
         variable_name="dry_run",
         display_name="Dry Run",
-        description="Return tips (ignore this unless you are testing)",
+        description="Return tips and skip incubation (ignore this unless you are testing)",
         default=False,
     )
 
@@ -158,7 +167,7 @@ def run(protocol: protocol_api.ProtocolContext):
     # LOADING LABWARE
     working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "D2")
     heatshaker = protocol.load_module("heaterShakerModuleV1", "D1")
-    sample_plate = protocol.load_labware("corning_96_wellplate_360ul_flat", "C2")
+    working_plate = protocol.load_labware("corning_96_wellplate_360ul_flat", "C2")
     reagent_stock = protocol.load_labware(
         "opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "A1"
     )
@@ -230,7 +239,7 @@ def run(protocol: protocol_api.ProtocolContext):
         # num_transfers = math.ceil((number_samples*protocol.params.buffer_vol)/pipette_max)
         num_transfers = math.ceil((number_samples*protocol.params.buffer_vol)/(protocol.params.buffer_vol*math.floor(pipette_max/protocol.params.buffer_vol)))
         well_counter = 0
-        col_num = replication_mode+1     # col num for the sample_plate
+        col_num = replication_mode+1     # col num for the working_plate
         # print(num_transfers)
         for i in range (0, num_transfers):
             if i != num_transfers-1:    # not on last iteration
@@ -256,8 +265,8 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.touch_tip(sample_stock['A' + str(i+1+diluted_sample_offset)])
             right_pipette.aspirate(working_sample_vol*replication_mode+10, sample_stock['A' + str(i+1+diluted_sample_offset)],0.3)
             for x in range (0,replication_mode):
-                right_pipette.dispense(working_sample_vol, sample_plate['A' + str(col_num)].bottom(0.5), 0.5)
-                # right_pipette.blow_out(sample_plate['A' + str(col_num)].top())
+                right_pipette.dispense(working_sample_vol, working_plate['A' + str(col_num)].bottom(0.5), 0.5)
+                # right_pipette.blow_out(working_plate['A' + str(col_num)].top())
                 col_num+=1
             remove_tip(right_pipette)
     else:
@@ -266,7 +275,7 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.pick_up_tip()
             right_pipette.aspirate(working_sample_vol*replication_mode+10, sample_stock['A' + str(i+1)],0.5)
             for x in range (0,replication_mode):
-                right_pipette.dispense(working_sample_vol, sample_plate['A' + str(col_num)].bottom(0.5), 0.5)
+                right_pipette.dispense(working_sample_vol, working_plate['A' + str(col_num)].bottom(0.5), 0.5)
                 # right_pipette.blow_out(working_plate['A' + str(col_num)].top())
                 col_num+=1
             remove_tip(right_pipette)
@@ -279,7 +288,7 @@ def run(protocol: protocol_api.ProtocolContext):
         left_pipette.aspirate(working_sample_vol*replication_mode+5, bsa_rack[old].bottom(1.5), 0.25)
 
         for i in range(1, replication_mode+1):  # A1,A2,A3
-            left_pipette.dispense(working_sample_vol, sample_plate[new + str(i)].bottom(0.1), 0.25)
+            left_pipette.dispense(working_sample_vol, working_plate[new + str(i)].bottom(0.1), 0.25)
         # remove_tip(left_pipette)
 
     # Standard Preparation  FINISH LATER
@@ -383,7 +392,7 @@ def run(protocol: protocol_api.ProtocolContext):
     vol_in_15_facon-=working_sample_vol*replication_mode+5
     left_pipette.aspirate(working_sample_vol*replication_mode+5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.25)
     for i in range(1, replication_mode+1):  # A1,A2,A3
-        left_pipette.dispense(working_sample_vol, sample_plate["H" + str(i)].bottom(0.1), 0.25)
+        left_pipette.dispense(working_sample_vol, working_plate["H" + str(i)].bottom(0.1), 0.25)
     remove_tip(left_pipette)
 
     # Adding Working Reagent to Plate
@@ -396,9 +405,9 @@ def run(protocol: protocol_api.ProtocolContext):
         # protocol.comment(str(working_reagent_volume_amt))
         # protocol.comment(str(math.ceil(working_reagent_volume_amt/(10.5*1000))))
         right_pipette.aspirate(working_reagent_volume, working_reagent_reservoir['A'+str(math.ceil(working_reagent_volume_amt/(10.5*1000)))],0.5)
-        right_pipette.dispense(working_reagent_volume, sample_plate["A"+str(i+1)].top(-1), rate=0.3)
-        right_pipette.blow_out(sample_plate["A"+str(i+1)].top(-1))
-        right_pipette.blow_out(sample_plate["A"+str(i+1)].top(-1))
+        right_pipette.dispense(working_reagent_volume, working_plate["A"+str(i+1)].top(-1), rate=0.3)
+        right_pipette.blow_out(working_plate["A"+str(i+1)].top(-1))
+        right_pipette.blow_out(working_plate["A"+str(i+1)].top(-1))
     remove_tip(right_pipette)
 
     # Prep HeaterShaker
@@ -406,21 +415,21 @@ def run(protocol: protocol_api.ProtocolContext):
     # move labware with lid onto hs_mod
     if add_lid:
         protocol.deck.__delitem__("C2")
-        new_sample_plate = protocol.load_labware(
+        new_working_plate = protocol.load_labware(
             "opentrons_96_wellplate_200ul_pcr_full_skirt", "C2"
         )
         protocol.move_labware(
-            new_sample_plate, new_location=heatshaker, use_gripper=True
+            new_working_plate, new_location=heatshaker, use_gripper=True
         )
         heatshaker.close_labware_latch()
         heatshaker.open_labware_latch()
-        new_sample_plate.set_offset(x=0.00, y=0.00, z=30)
+        new_working_plate.set_offset(x=0.00, y=0.00, z=30)
         protocol.move_labware(
-            labware=lid, new_location=new_sample_plate, use_gripper=True
+            labware=lid, new_location=new_working_plate, use_gripper=True
         )
     else:
         protocol.move_labware(
-            labware=sample_plate, new_location=heatshaker, use_gripper=True
+            labware=working_plate, new_location=heatshaker, use_gripper=True
         )
     # protocol.pause("Place lid on well plate")
     heatshaker.close_labware_latch()
@@ -438,19 +447,19 @@ def run(protocol: protocol_api.ProtocolContext):
     if is_dry_run:
         protocol.delay(seconds=10)
     else:
-        protocol.delay(minutes=25)  # SEND EMAIL AT 10 MINUTES
+        protocol.delay(minutes=protocol.params.incubation_time)  # SEND EMAIL AT 10 MINUTES
 
     # Deactivating Heatshaker
     heatshaker.deactivate_heater()
     heatshaker.open_labware_latch()
     if add_lid:
         protocol.move_labware(lid, "C1", use_gripper=True)
-        protocol.move_labware(new_sample_plate, "C2", use_gripper=True)
+        protocol.move_labware(new_working_plate, "C2", use_gripper=True)
         heatshaker.close_labware_latch()
         # left_pipette.pick_up_tip()
         # left_pipette.pick_up_tip()
     else:
-        protocol.move_labware(sample_plate, "C2", use_gripper=True)
+        protocol.move_labware(working_plate, "C2", use_gripper=True)
         heatshaker.close_labware_latch()
         
         # heatshaker.close_labware_latch()
