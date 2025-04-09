@@ -53,7 +53,7 @@ def add_parameters(parameters):
         variable_name="number_samples",
         display_name="number_samples",
         description="Number of input samples.",
-        default=87,
+        default=96,
         minimum=1,  #change to 25
         maximum=96,
         unit="samples",
@@ -191,8 +191,6 @@ def run(protocol: protocol_api.ProtocolContext):
                         rack_num+=1
                         pass
 
-
-
     def find_aspirate_height(pip, source_well):
         lld_height = (
             pip.measure_liquid_height(source_well) - source_well.bottom().point.z
@@ -292,6 +290,9 @@ def run(protocol: protocol_api.ProtocolContext):
         # col_num = replication_mode+1     # col num for the sample_plate
         stock_plate_num = 0
         for i in range (0, num_transfers):
+            if i != 0 and i % 4 == 0:    # every 4th iteration
+                remove_tip(left_pipette)
+                # pick_up(left_pipette)
             if i != num_transfers-1:    # not on last iteration
                 aspirate_vol = pipette_max - pipette_max%protocol.params.buffer_vol
             else:

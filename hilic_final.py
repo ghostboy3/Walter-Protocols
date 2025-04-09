@@ -7,7 +7,18 @@ from opentrons import types
 # from datetime import datetime, timedelta
 import time
 from datetime import datetime
-
+# z = input(" 600l  ")
+# if z =="doodl":
+#     y = input("do u love skbidi")
+#     if y == "yessir":
+#         print("ur the alpha, so sigma")
+#         x = input("complete the lyrics: sigma sigma on the wall who")
+#         if x == "is the skibidiest of them all":
+#             print("bro u r litterally the GOAT like fr fr")
+#         else:
+#             print("are you google? because you have everything i've been searching for")
+#     else:
+#         print("people call me doodl, but you can call me anytime")
 metadata = {
     "protocolName": "SP3 HILIC protocol",
     "author": "Nico To",
@@ -24,19 +35,10 @@ def add_parameters(parameters: protocol_api.Parameters):
         description="Number of samples",
         default=10,
         minimum=1,
-        maximum=100,
+        maximum=96,
         unit="samples"
     )
-    # Keep 300 as default
-    parameters.add_int(
-        variable_name="ammoniumAcetate_conc",
-        display_name="Concentration Ammonium Acetate",
-        description="_______ mM Ammonium Acetate (4.5pH)",
-        default=300,
-        minimum=100,
-        maximum=1000,
-        unit="mM"
-    )
+
     # Default true
     parameters.add_bool(
         variable_name="manual_load_beads",
@@ -49,13 +51,6 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="reduction_alkylation",
         display_name="Reduction and Alkylation",
         description="Use Walter to reduce and alkylate",
-        default=True
-    )
-    #Default true
-    parameters.add_bool(
-        variable_name="create_buffers",
-        display_name="Create buffers with Walt",
-        description="Use walt to create/mix binding, wash, and equilibration buffers",
         default=True
     )
     parameters.add_int(
@@ -79,8 +74,8 @@ def add_parameters(parameters: protocol_api.Parameters):
     parameters.add_int(
         variable_name="protein_stock_conc",
         display_name="Concentration of Protien Stock",
-        description="_______ ug/ul protien (only required of reduction and alkylation is done with Walt)",
-        default=25,
+        description="_______ ug/ul protien.",
+        default=50,
         minimum= 0,
         maximum=1000,
         unit="ug/ul"
@@ -149,14 +144,19 @@ def get_height_smalltube(volume):
 def get_height_15ml_falcon(volume):
     '''
     Get's the height of the liquid in the tube
-    Volume: volume of liquid in tube in ml
+    Volume: volume of liquid in tube in ul
     Return: height in mm from the bottom of tube that pipette should go to
     '''
+    volume = volume/1000
     if volume <= 1:     # cone part aaa
         # print(-3.33*(volume**2)+15.45*volume+9.50)
-        return -3.33*(volume**2)+15.45*volume+9.50 - 1   #−3.33x2+15.45x+9.50
+        height = -3.33*(volume**2)+15.45*volume+9.50 - 1   #−3.33x2+15.45x+9.50
     else:
-        return 6.41667*volume +15.1667 -5    
+        height = 6.41667*volume +15.1667 -5
+    if height < 0.1:
+        height =  0.1
+    return height
+  
 def get_height_50ml_falcon(volume):
     '''
     Get's the height of the liquid in the tube
@@ -164,6 +164,8 @@ def get_height_50ml_falcon(volume):
     Return: hieght from bottom of tube in millimeters
     '''
     height = (1.8*(volume/1000))+12-3
+    if height < 0.1:
+        height =  0.1
     return height
 def get_vol_15ml_falcon(height):
     """
@@ -187,44 +189,6 @@ def get_vol_50ml_falcon(height):
     return volume
 
 
-def get_eq_buffer_vols(total_buffer_amt, ammonium_acetate_concentration):
-    '''
-    total_buffer_amt: amount of buffer being created in ul
-    ammonium_acetate_concentration: Concentration of Ammonium acetate 
-    Returns: A dictionary with all the volumes in ul
-    '''
-    acn = total_buffer_amt*0.15     #amount of acetonitrle
-    ammonium_acetate = (total_buffer_amt-acn)*(100/ammonium_acetate_concentration)
-    water = total_buffer_amt-acn-ammonium_acetate
-    final_vols = {"acn": acn,
-                  "ammonium_acetate": ammonium_acetate,
-                  "water": water}
-    return final_vols
-
-def get_binding_buffer_vols(total_buffer_amt, ammonium_acetate_concentration):
-    '''
-    total_buffer_amt: amount of buffer being created in ul
-    ammonium_acetate_concentration: Concentration of Ammonium acetate 
-    Returns: A dictionary with all the volumes in ul
-    '''
-    acn = total_buffer_amt*0.30     #amount of acetonitrle
-    ammonium_acetate = (total_buffer_amt-acn)*(200/ammonium_acetate_concentration)
-    water = total_buffer_amt-acn-ammonium_acetate
-    final_vols = {"acn": acn,
-                  "ammonium_acetate": ammonium_acetate,
-                  "water": water}
-    return final_vols
-def get_wash_buffer_vols(total_buffer_amt):
-    '''
-    total_buffer_amt: amount of buffer being created in ul
-    ammonium_acetate_concentration: Concentration of Ammonium acetate 
-    Returns: A dictionary with all the volumes in ul
-    '''
-    acn = total_buffer_amt*0.95     #amount of acetonitrle
-    water = total_buffer_amt-acn
-    final_vols = {"acn": acn,
-                  "water": water}
-    return final_vols
 
 def run(protocol: protocol_api.ProtocolContext):
     #defining variables
@@ -236,7 +200,7 @@ def run(protocol: protocol_api.ProtocolContext):
     dtt_conc = protocol.params.dtt_conc
     iaa_conc = protocol.params.iaa_conc
     
-    bead_amt = 12.5#(num_samples)*25     #µl
+    bead_amt = max(protocol.params.protein_stock_conc/4, 5)      #µl
     protein_sample_amt = 60         # Includes DTT + IAA + protien + buffer
     protein_added_to_beads =protein_sample_amt*2      #ul
     equilibartion_buffer_amt = (300*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
@@ -245,13 +209,12 @@ def run(protocol: protocol_api.ProtocolContext):
     digestion_buffer_per_sample_amt = 100#protocol.params.digestion_buffer_per_sample_amt       #100-150µl
     
     #Random variables for testing
-    amt_extra_in_2ml_reservoir = 75
+    amt_extra_in_2ml_reservoir = 50
     
     #loading tips
-    if protocol.params.create_buffers == True:      # A3 has p1000 tips
-        tips200 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", "A3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "B3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "C3")]
-    else:
-        tips200 = [protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "A3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "B3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "C3")]
+    # if protocol.params.create_buffers == True:      # A3 has p1000 tips
+    #     tips200 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", "A3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "B3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "C3")]
+    tips200 = [protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "A3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "B3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "C3")]
 
     chute = protocol.load_waste_chute()
     left_pipette = protocol.load_instrument("flex_1channel_1000", "left", tip_racks=tips200)
@@ -268,7 +231,7 @@ def run(protocol: protocol_api.ProtocolContext):
     # buffer_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "B1", "reagent stock rack")   # equilibration, binding, and wash buffer
     working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "D2")
     final_tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "B1", "final solution rack")
-    falcon_tube_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "C2", "new solution rack")
+    falcon_tube_rack = protocol.load_labware("opentrons_15_tuberack_falcon_15ml_conical", "C2", "falcon rack")
 
     # dtt_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "C3", "DTT plate")
     
@@ -284,22 +247,25 @@ def run(protocol: protocol_api.ProtocolContext):
     wash_buffer = protocol.define_liquid("Wash Buffer", "95%% acetonitrile (5% water)", "#05a1f5")
     digestion_buffer = protocol.define_liquid("Digestion Buffer", "", "#fafa02")          # CHANGE THIS AFTER ASKING LAURA
     protien_buffer = protocol.define_liquid("Protien Buffer", "", "#ff59f7")
-    water = protocol.define_liquid("water", "water", "#00b7ff")
-    acetonitrile = protocol.define_liquid("acn", "acn", "#03fc31")
-    ammoniumAcetate = protocol.define_liquid("ammonium acetate", "ammonium acetate", "#fa05ee")
+    formic_acid = protocol.define_liquid("Formic Acid", "", "#00b7ff")
+    # water = protocol.define_liquid("water", "water", "#00b7ff")
+    # acetonitrile = protocol.define_liquid("acn", "acn", "#03fc31")
+    # ammoniumAcetate = protocol.define_liquid("ammonium acetate", "ammonium acetate", "#fa05ee")
     # Loading Liquids
     falcon_tube_rack["A2"].load_liquid(bead_sol, bead_amt)
     falcon_tube_rack["B1"].load_liquid(dtt_stock, 200)
     falcon_tube_rack["C1"].load_liquid(iaa_stock, 200)
     falcon_tube_rack["B2"].load_liquid(empty_tube, 200)
     falcon_tube_rack["C2"].load_liquid(empty_tube, 200)
-    falcon_tube_rack["B4"].load_liquid(protien_buffer, 200)
+    falcon_tube_rack["A3"].load_liquid(protien_buffer, 200)
+    falcon_tube_rack["B3"].load_liquid(formic_acid, 200)
     bead_storage = falcon_tube_rack["A2"]
     dtt_stock_storage = falcon_tube_rack["B1"]
     dtt_working_storage = falcon_tube_rack["B2"]
     iaa_stock_storage = falcon_tube_rack["C1"]
     iaa_working_storage = falcon_tube_rack["C2"]
-    protien_buffer_storage = falcon_tube_rack["B4"]
+    protien_buffer_storage = falcon_tube_rack["A3"]
+    formic_acid_storage = falcon_tube_rack["B3"]
     # tube_rack["B1"].load_liquid(digestion_buffer, digestion_buffer_stock_amt)
     # digestion_buffer_storage = tube_rack["B1"]
     # digestion_buffer_storage = reservoir.columns_by_name()['1']
@@ -307,12 +273,12 @@ def run(protocol: protocol_api.ProtocolContext):
     falcon_tube_rack["A1"].load_liquid(digestion_buffer, digestion_buffer_per_sample_amt*num_samples)
     dig_buffer_location = falcon_tube_rack["A1"]
     
-    falcon_tube_rack["A3"].load_liquid(water, 100)
-    water_location = falcon_tube_rack["A3"]
-    falcon_tube_rack["A4"].load_liquid(acetonitrile, 100)
-    acn_location = falcon_tube_rack["A4"]
-    falcon_tube_rack["B3"].load_liquid(ammoniumAcetate, 100)
-    ammoniumAcetate_location = falcon_tube_rack["B3"]
+    # falcon_tube_rack["A3"].load_liquid(water, 100)
+    # water_location = falcon_tube_rack["A3"]
+    # falcon_tube_rack["A4"].load_liquid(acetonitrile, 100)
+    # acn_location = falcon_tube_rack["A4"]
+    # falcon_tube_rack["B3"].load_liquid(ammoniumAcetate, 100)
+    # ammoniumAcetate_location = falcon_tube_rack["B3"]
 
     working_reagent_reservoir["A1"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
     working_reagent_reservoir["A2"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
@@ -342,7 +308,7 @@ def run(protocol: protocol_api.ProtocolContext):
             pipette.return_tip()
         else:
             pipette.drop_tip(chute)         
-    def aspirate_spuernatent_to_trash(pipette, amt, speed, discard_tip = True, height = 0.2):
+    def aspirate_spuernatent_to_trash(pipette, amt, speed, discard_tip = True, height = 0.3):
         '''amt: amount ot aspirirate out'''
         protocol.comment("\nAspriating supernatant to trash")
         for i in range (0, math.ceil(num_samples/8)):
@@ -433,41 +399,18 @@ def run(protocol: protocol_api.ProtocolContext):
         pipette.mix(num_mixes, vol, plate.bottom().move(types.Point(x=-1, y=0, z=3.5)),rate= rate)
         pipette.mix(1, vol, plate.bottom(0.1),rate= 0.1)
     
-    def create_buffers(total_vol, start_location, end_location, vol):
-        '''
-        total_vol: list of transfer volumes in ul [vol1, vol2]
-        start_location: location of the acn, aa, or h2o
-        end_location: well number of the first slot for the buffer (1 to 12)
-        '''
-        vol= vol
-        protocol.comment(str(total_vol))
-        for i in range (0, len(total_vol)):
-            vol = total_vol[i]
-            for x in range (0, math.ceil(vol/1000)):
-                if x != math.ceil(vol/1000)-1:  #not last one yet
-                    vol -= 1000
-                    left_pipette.aspirate(1000, start_location.bottom(get_height_50ml_falcon(vol)))
-                    # left_pipette.aspirate(1000, start_location)
-                    left_pipette.dispense(1000, working_reagent_reservoir["A" +str(end_location+i)].top(-5))
-                else:
-                    vol -= vol-(1000*x)
-                    left_pipette.aspirate(vol-(1000*x), start_location.bottom(get_height_50ml_falcon(vol)))
-                    # left_pipette.aspirate(vol-(1000*x), start_location)
-                    left_pipette.dispense(vol-(1000*x),working_reagent_reservoir["A" +str(end_location+i)].top(-5))
-                left_pipette.blow_out(working_reagent_reservoir["A" +str(end_location+i)].top(-5))
-        return vol
-    def delay(seconds):
+    def delay(seconds, msg = ""):
         if protocol.params.dry_run:
             return
         # start_time = datetime.now()
         # protocol.comment(f"Delaying for {seconds} seconds")
         check_tips()
-        protocol.delay(seconds=seconds)
+        protocol.delay(seconds=seconds, msg = msg)
         # while True:
         #     if (datetime.now() - start_time).seconds > seconds:
         #         break
     
-    def transfer_large_amt(vol, start_loc, end_loc, pipette, rate):
+    def transfer_large_amt(vol, start_loc, end_loc, pipette, rate, aspirate_height = 0, dispense_height = 0):
         '''
         vol: volume to transfer
         start_loc: location to aspirate from
@@ -477,109 +420,12 @@ def run(protocol: protocol_api.ProtocolContext):
         '''
         for i in range (0, math.ceil(vol/pipette_max)):
             if i != math.ceil(vol/pipette_max)-1:
-                pipette.aspirate(pipette_max, start_loc, rate=rate)
-                pipette.dispense(pipette_max, end_loc, rate=rate)
+                print(aspirate_height)
+                pipette.aspirate(pipette_max, start_loc.bottom(aspirate_height), rate=rate)
+                pipette.dispense(pipette_max, end_loc.bottom(dispense_height), rate=rate)
             else:
-                pipette.aspirate(vol-(pipette_max*i), start_loc, rate=rate)
-                pipette.dispense(vol-(pipette_max*i), end_loc, rate=rate)
-    
-    if protocol.params.create_buffers == True:
-        protocol.comment("-------------BUFFER CREATION ---------------")
-        channel_max_vol = 10000 #each channel can hold up to 10000 ul
-        acn_eq_vols = []
-        acn_binding_vols = []
-        acn_wash_vols = []
-        aa_eq_vols = []
-        aa_binding_vols = []
-        water_eq_vols = []
-        water_binding_vols = []
-        water_wash_vols = []
-        pipette_max = 1000-5
-        #equilibartion buffer
-        for i in range (0, math.ceil((equilibartion_buffer_amt*1000)/channel_max_vol)):
-            #Not on last loop yet
-            if i !=math.ceil((equilibartion_buffer_amt*1000)/channel_max_vol)-1:
-                volumes =get_eq_buffer_vols(channel_max_vol, protocol.params.ammoniumAcetate_conc)
-                acn_eq_vols.append(volumes['acn'])
-                aa_eq_vols.append(volumes['ammonium_acetate'])
-                water_eq_vols.append(volumes['water'])
-            else:
-                volumes =get_eq_buffer_vols((equilibartion_buffer_amt*1000)-(channel_max_vol*i), protocol.params.ammoniumAcetate_conc)
-                acn_eq_vols.append(volumes['acn'])
-                aa_eq_vols.append(volumes['ammonium_acetate'])
-                water_eq_vols.append(volumes['water'])
-        #Binding buffer
-        for i in range (0, math.ceil((binding_buffer_amt*1000)/channel_max_vol)):
-            #Not on last loop yet
-            if i !=math.ceil((binding_buffer_amt*1000)/channel_max_vol)-1:
-                volumes =get_binding_buffer_vols(channel_max_vol, protocol.params.ammoniumAcetate_conc)
-                acn_binding_vols.append(volumes['acn'])
-                aa_binding_vols.append(volumes['ammonium_acetate'])
-                water_binding_vols.append(volumes['water'])
-            else:
-                volumes =get_binding_buffer_vols((equilibartion_buffer_amt*1000)-(channel_max_vol*i), protocol.params.ammoniumAcetate_conc)
-                acn_binding_vols.append(volumes['acn'])
-                aa_binding_vols.append(volumes['ammonium_acetate'])
-                water_binding_vols.append(volumes['water'])
-        #Wash buffer
-        for i in range (0, math.ceil((wash_buffer_amt*1000)/channel_max_vol)):
-            #Not on last loop yet
-            if i !=math.ceil((wash_buffer_amt*1000)/channel_max_vol)-1:
-                volumes =get_wash_buffer_vols(channel_max_vol)
-                acn_wash_vols.append(volumes['acn'])
-                water_wash_vols.append(volumes['water'])
-            else:
-                volumes =get_wash_buffer_vols((equilibartion_buffer_amt*1000)-(channel_max_vol*i))
-                acn_wash_vols.append(volumes['acn'])
-                water_wash_vols.append(volumes['water'])
-        
-        #Loading ACN
-        left_pipette.pick_up_tip()
-        acn_vol = get_vol_50ml_falcon(find_aspirate_height(left_pipette, acn_location))
-        acn_vol = create_buffers(acn_eq_vols, acn_location, 1, acn_vol)
-        acn_vol = create_buffers(acn_binding_vols, acn_location, 4, acn_vol)
-        acn_vol = create_buffers(acn_wash_vols, acn_location, 7, acn_vol)
-        remove_tip(left_pipette, protocol.params.dry_run)
-        
-        #Loading Ammonium Acetate
-        left_pipette.pick_up_tip()
-        aa_vol = get_vol_50ml_falcon(find_aspirate_height(left_pipette, ammoniumAcetate_location))
-        aa_vol = create_buffers(aa_eq_vols, ammoniumAcetate_location, 1, aa_vol)
-        aa_vol = create_buffers(aa_binding_vols, ammoniumAcetate_location, 4, aa_vol)
-        remove_tip(left_pipette, protocol.params.dry_run)
-        #Loading H2O
-        left_pipette.pick_up_tip()
-        water_vol = get_vol_50ml_falcon(find_aspirate_height(left_pipette, water_location))
-        water_vol= create_buffers(water_eq_vols, water_location, 1, water_vol)
-        water_vol = create_buffers(water_binding_vols, water_location, 4, water_vol)
-        water_vol = create_buffers(water_wash_vols, water_location, 7, water_vol)
-        remove_tip(left_pipette, protocol.params.dry_run)
-        protocol.comment("\n"*10)
-        protocol.comment(str(acn_eq_vols))
-        protocol.comment(str(acn_binding_vols))
-        protocol.comment(str(acn_wash_vols))
-        protocol.comment(str(aa_eq_vols))
-        protocol.comment(str(aa_binding_vols))
-        protocol.comment(str(water_eq_vols))
-        protocol.comment(str(water_binding_vols))
-        protocol.comment(str(water_wash_vols))
-        protocol.comment("\n"*10)
-
-        for j in range (0,3):
-            i = [acn_eq_vols, acn_binding_vols, acn_wash_vols][j]
-            left_pipette.pick_up_tip()
-            for x in range (0, len(i)):
-                left_pipette.mix(3, 900, working_reagent_reservoir["A"+str(1+j*3+x)].bottom().move(types.Point(x=0, y=-20, z=3)))
-                left_pipette.mix(3, 900, working_reagent_reservoir["A"+str(1+j*3+x)].bottom().move(types.Point(x=0, y=0, z=3)))
-                left_pipette.mix(3, 900, working_reagent_reservoir["A"+str(1+j*3+x)].bottom().move(types.Point(x=0, y=20, z=3)))
-            remove_tip(left_pipette, protocol.params.dry_run)
-        protocol.move_labware(labware=tips200[0], new_location=protocol_api.OFF_DECK, use_gripper=False)
-        protocol.move_labware(staging_racks[0], 'A3', use_gripper=True)
-        protocol.deck.__delitem__("A3")
-        # protocol.load_labware('opentrons_96_filtertiprack_200ul', 'A4')
-        tips200[0]=protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "A3")
-        # print(tips200)
-        pipette_max = 200-5
+                pipette.aspirate(vol-(pipette_max*i), start_loc.bottom(aspirate_height), rate=rate)
+                pipette.dispense(vol-(pipette_max*i), end_loc.bottom(dispense_height), rate=rate)
     
     if protocol.params.reduction_alkylation:
         dtt_final_conc = 20     #20 mM
@@ -593,10 +439,17 @@ def run(protocol: protocol_api.ProtocolContext):
         dtt_stock_vol = (dtt_working_stock_conc*dtt_working_vol)/dtt_conc       # amt of stock that needs to be transfered to create working dtt solution
         # LOADING THE DTT
         pick_up(left_pipette)
-        transfer_large_amt(dtt_stock_vol, dtt_stock_storage, dtt_working_storage, left_pipette, 0.5)
+        volume_of_dtt_stock_storage_tube = get_vol_15ml_falcon(find_aspirate_height(left_pipette, dtt_stock_storage))
+        volume_of_dtt_stock_storage_tube -= dtt_stock_vol
+        # print(volume_of_dtt_stock_storage_tube)
+        transfer_large_amt(dtt_stock_vol, dtt_stock_storage, dtt_working_storage, left_pipette, 0.5, aspirate_height=0.1, dispense_height=50)
+        print(dtt_stock_vol)
         remove_tip(left_pipette, protocol.params.dry_run)
         pick_up(left_pipette)
-        transfer_large_amt(dtt_working_vol-dtt_stock_vol, protien_buffer_storage, dtt_working_storage, left_pipette, 0.5)
+        pick_up(left_pipette)
+        volume_of_protein_buffer_storate = get_vol_15ml_falcon(find_aspirate_height(left_pipette, protien_buffer_storage))
+        volume_of_protein_buffer_storate-= dtt_working_vol-dtt_stock_vol
+        transfer_large_amt(dtt_working_vol-dtt_stock_vol, protien_buffer_storage, dtt_working_storage, left_pipette, 0.5, aspirate_height=get_height_15ml_falcon(volume_of_protein_buffer_storate),dispense_height=50)
         left_pipette.mix(10, pipette_max, dtt_working_storage.bottom(1))
         remove_tip(left_pipette, protocol.params.dry_run)
         pick_up(left_pipette)
@@ -606,21 +459,21 @@ def run(protocol: protocol_api.ProtocolContext):
             else:
                 amt_in_well = 5* math.floor(num_samples/8)+amt_extra_in_2ml_reservoir
             # print(amt_in_well)
-            transfer_large_amt(amt_in_well, dtt_working_storage, digestion_buffer_reservoir.wells()[i+8], left_pipette, 0.5)
+            transfer_large_amt(amt_in_well, dtt_working_storage, digestion_buffer_reservoir.wells()[i+8], left_pipette, 0.5,dispense_height=1)
         remove_tip(left_pipette, protocol.params.dry_run)
         # ADDING DTT TO PLATE
         for i in range (0, math.ceil(num_samples/8)):
             pick_up(right_pipette)
             right_pipette.aspirate(5, digestion_buffer_reservoir['A2'].bottom(0.1), 0.5)
             right_pipette.dispense(5, sample_plate['A' + str(i+1)].bottom(1), 0.5)
-            right_pipette.mix(protein_sample_amt-10, 3, sample_plate['A' + str(i+1)].bottom(1), 0.2)
+            right_pipette.mix(3,protein_sample_amt-10, sample_plate['A' + str(i+1)].bottom(1), 0.2)
             right_pipette.blow_out(sample_plate['A' + str(i+1)].top())
             remove_tip(right_pipette, protocol.params.dry_run)
         hs_mod.open_labware_latch()
         # 56 C for 30 minutes
         protocol.move_labware(sample_plate, hs_mod, use_gripper=True)
         hs_mod.close_labware_latch()
-        hs_mod.set_and_wait_for_shake_speed(1450)       #1000 rpm
+        # hs_mod.set_and_wait_for_shake_speed(1450)       #1000 rpm
         hs_mod.set_and_wait_for_temperature(56)
         start_time = datetime.now()
         
@@ -629,10 +482,13 @@ def run(protocol: protocol_api.ProtocolContext):
         iaa_working_vol = pipette_min * num_samples + 8*amt_extra_in_2ml_reservoir +50
         iaa_stock_vol = (iaa_working_stock_conc*iaa_working_vol)/iaa_conc       # amt of stock that needs to be transfered to create working dtt solution
         pick_up(left_pipette)
-        transfer_large_amt(iaa_stock_vol, iaa_stock_storage, iaa_working_storage, left_pipette, 0.5)
+        volume_of_iaa_stock_storage_tube = get_vol_15ml_falcon(find_aspirate_height(left_pipette, iaa_stock_storage))
+        volume_of_iaa_stock_storage_tube -= iaa_stock_vol
+        transfer_large_amt(iaa_stock_vol, iaa_stock_storage, iaa_working_storage, left_pipette, 0.5,aspirate_height=0.1, dispense_height=50)
         remove_tip(left_pipette, protocol.params.dry_run)
         pick_up(left_pipette)
-        transfer_large_amt(iaa_working_vol-iaa_stock_vol, protien_buffer_storage, iaa_working_storage, left_pipette, 0.5)
+        volume_of_protein_buffer_storate -= iaa_working_vol-iaa_stock_vol
+        transfer_large_amt(iaa_working_vol-iaa_stock_vol, protien_buffer_storage, iaa_working_storage, left_pipette, 0.5,aspirate_height=get_height_15ml_falcon(volume_of_protein_buffer_storate), dispense_height=50)
         left_pipette.mix(10, pipette_max, iaa_working_storage.bottom(1))
         remove_tip(left_pipette, protocol.params.dry_run)
         
@@ -643,12 +499,12 @@ def run(protocol: protocol_api.ProtocolContext):
             else:
                 amt_in_well = 5* math.floor(num_samples/8)+amt_extra_in_2ml_reservoir
             # print(amt_in_well)
-            transfer_large_amt(amt_in_well, iaa_working_storage, digestion_buffer_reservoir.wells()[i+16], left_pipette, 0.5)
+            transfer_large_amt(amt_in_well, iaa_working_storage, digestion_buffer_reservoir.wells()[i+16], left_pipette, 0.5, dispense_height=1)
         remove_tip(left_pipette, protocol.params.dry_run)
         
         # 30 min incubation
         time_elasped = (datetime.now() - start_time).seconds
-        protocol.delay(seconds = 1800-time_elasped, msg = "30 minute DTT incubation at 56 C")
+        delay(seconds = 1800-time_elasped, msg = "30 minute DTT incubation at 56 C")
         # moving plate and adding IAA to plate
         hs_mod.deactivate_shaker()
         hs_mod.deactivate_heater()
@@ -659,47 +515,22 @@ def run(protocol: protocol_api.ProtocolContext):
             pick_up(right_pipette)
             right_pipette.aspirate(5, digestion_buffer_reservoir['A3'].bottom(0.1), 0.5)
             right_pipette.dispense(5, sample_plate['A' + str(i+1)].bottom(1), 0.5)
-            right_pipette.mix(protein_sample_amt-10, 3, sample_plate['A' + str(i+1)].bottom(1), 0.2)
+            right_pipette.mix(3,protein_sample_amt-10, sample_plate['A' + str(i+1)].bottom(1), 0.2)
             right_pipette.blow_out(sample_plate['A' + str(i+1)].top())
             remove_tip(right_pipette, protocol.params.dry_run)
         # 45 minute IAA incubation at RT
-        protocol.move_labware(sample_plate, hs_mod, use_gripper=True)
-        hs_mod.close_labware_latch()
-        hs_mod.set_and_wait_for_shake_speed(1450)
-        protocol.delay(minutes=45, msg="45 minute IAA incubation at room temperature")
-        hs_mod.deactivate_shaker()
         hs_mod.open_labware_latch()
-        protocol.move_labware(sample_plate, "A1", use_gripper=True)
-        protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
-        hs_mod.close_labware_latch()
-        # left_pipette.pick_up_tip()
-        # left_pipette.pick_up_tip()
-        # # Adding DTT to the plate
-        # num_transfers = math.ceil(num_samples*pipette_min/pipette_max)
-        # well_counter = 0
-        # pick_up(left_pipette)
-        # for i in range (0, num_transfers):
-        #     if i != num_transfers-1:    # not on last iteration
-        #         aspirate_vol = pipette_max - pipette_max%pipette_min
-        #     else:
-        #         aspirate_vol = num_samples*pipette_min - pipette_max*(num_transfers-1)
-        #     if left_pipette.has_tip == False:
-        #         pick_up(left_pipette)
-        #     left_pipette.blow_out(dtt_working_storage.top())
-        #     left_pipette.aspirate(aspirate_vol+5, dtt_working_storage.bottom(), 0.5)
-        #     for x in range (0, math.floor(aspirate_vol/pipette_min)):
-        #         left_pipette.dispense(pipette_min, dtt_plate.wells()[well_counter], 0.5)
-        #         well_counter += 1
-        # remove_tip(left_pipette)
-        
-        #Adding sample to plate
-        # protien_amt = 
-        
-        
-        #Creating IAA Dilution
-        iaa_working_stock_conc = (iaa_final_conc*protein_sample_amt)/pipette_min   # DTT working stock concentration so that 5ul is 20 mM
-        iaa_stock_vol = pipette_min * num_samples +50
-        # print(iaa_working_stock_conc)
+        protocol.pause('''IAA incubation for 45 minutes at room temperature''')
+        # protocol.move_labware(sample_plate, hs_mod, use_gripper=True)
+        # hs_mod.close_labware_latch()
+        # hs_mod.set_and_wait_for_shake_speed(1450)
+        # delay(seconds=45*60, msg="45 minute IAA incubation at room temperature")
+        # # protocol.delay(minutes=45, msg="45 minute IAA incubation at room temperature")
+        # hs_mod.deactivate_shaker()
+        # hs_mod.open_labware_latch()
+        # protocol.move_labware(sample_plate, "A1", use_gripper=True)
+        # protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
+        # hs_mod.close_labware_latch()
         
     hs_mod.open_labware_latch()
     hs_mod.close_labware_latch()
@@ -718,7 +549,7 @@ def run(protocol: protocol_api.ProtocolContext):
             if i == num_transfers - 1:      # on last iteration
                 aspirate_amt = num_transfers*bead_amt - bead_amt*(num_transfers-1)+3
                 pick_up(left_pipette)
-                left_pipette.mix(3, aspirate_amt, bead_storage)
+                left_pipette.mix(3, total_bead_amt-bead_amt*well_counter, bead_storage)
                 left_pipette.aspirate(aspirate_amt, bead_storage.bottom(0.5))
                 for x in range (0, math.floor(aspirate_amt/bead_amt)):
                     left_pipette.dispense(bead_amt, reagent_plate.wells()[well_counter])
@@ -729,7 +560,7 @@ def run(protocol: protocol_api.ProtocolContext):
             else:
                 aspirate_amt = change_tip_after * bead_amt+5
                 pick_up(left_pipette)
-                left_pipette.mix(3, aspirate_amt, bead_storage)
+                left_pipette.mix(3, total_bead_amt-bead_amt*well_counter, bead_storage)
                 left_pipette.aspirate(aspirate_amt, bead_storage.bottom(0.5))
                 for x in range (0, change_tip_after):
                     left_pipette.dispense(bead_amt, reagent_plate.wells()[well_counter])
@@ -741,7 +572,7 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     protocol.delay(seconds=bead_settle_time+5, msg="waiting 7 seconds for microparticles to clear")
-    aspirate_spuernatent_to_trash(right_pipette, bead_amt - (bead_amt-5), 0.1, discard_tip=False, height=0.3)
+    aspirate_spuernatent_to_trash(right_pipette, bead_amt - (bead_amt-5), 0.1, discard_tip=False)
 
 
     protocol.comment("\nWashing and equilibrating the microparticles in "+str(wash_volume) + "µl Equilibration Buffer (2 times)")
@@ -778,12 +609,12 @@ def run(protocol: protocol_api.ProtocolContext):
             hs_mod.open_labware_latch()
             protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
             protocol.delay(seconds=bead_settle_time+5, msg="waiting for beads to settle (20 sec)")
-            aspirate_spuernatent_to_trash(right_pipette, wash_volume-15, 0.25, discard_tip=False, height=0.3)       # leave the last 5ul in the well plate
+            aspirate_spuernatent_to_trash(right_pipette, wash_volume-15, 0.25, discard_tip=False)       # leave the last 5ul in the well plate
         elif wash_num != num_washes-1:      # Not on the last wash yet
             hs_mod.open_labware_latch()
             protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
             protocol.delay(seconds=bead_settle_time+5, msg="waiting for beads to settle (20 sec)")
-            aspirate_spuernatent_to_trash(right_pipette, wash_volume, 0.25, discard_tip=False, height=0.3)       # leave the last 5ul in the well plate
+            aspirate_spuernatent_to_trash(right_pipette, wash_volume, 0.25, discard_tip=False)       # leave the last 5ul in the well plate
         # protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
 
     # protocol.move_labware(reagent_plate, new_location="B2", use_gripper=True)
@@ -839,14 +670,24 @@ def run(protocol: protocol_api.ProtocolContext):
     well_counter = 0
     left_pipette.pick_up_tip()
     for well_counter in range (0,8):
-        for i in range (0, math.ceil(transfer_vol/pipette_max)):
-            if i != math.ceil(transfer_vol/pipette_max):    # not on last iteration
-                aspirate_vol = pipette_max
-            else:
-                aspirate_vol = transfer_vol - (pipette_max*i)
-            left_pipette.aspirate(aspirate_vol, dig_buffer_location, 0.25)    
-            left_pipette.dispense(aspirate_vol, digestion_buffer_reservoir.wells()[well_counter].bottom(), 0.1)
+        if i == 0 or i == 1:
+            transfer_large_amt(250, dig_buffer_location, digestion_buffer_reservoir.wells()[well_counter], left_pipette, 0.25)
+            well_counter += 1
+        else:
+            transfer_large_amt(150, dig_buffer_location, digestion_buffer_reservoir.wells()[well_counter], left_pipette, 0.25)
+            well_counter+=1
+        # left_pipette.aspirate(aspirate_vol, dig_buffer_location, 0.25)
+    #     for i in range (0, math.ceil(transfer_vol/pipette_max)):
+    #         if i != math.ceil(transfer_vol/pipette_max):    # not on last iteration
+    #             aspirate_vol = pipette_max
+    #         else:
+    #             aspirate_vol = transfer_vol - (pipette_max*i)
+    #         left_pipette.aspirate(aspirate_vol, dig_buffer_location, 0.25)    
+    #         print(aspirate_vol)
+    #         left_pipette.dispense(aspirate_vol, digestion_buffer_reservoir.wells()[well_counter].bottom(), 0.1)
     remove_tip(left_pipette, protocol.params.dry_run)
+    # left_pipette.pick_up_tip()
+    # left_pipette.pick_up_tip()
     time_elasped = (datetime.now() - start_time).seconds
     # 30 minute incubation
     delay(1800-time_elasped)
@@ -925,12 +766,12 @@ def run(protocol: protocol_api.ProtocolContext):
         # right_pipette.blow_out(reagent_plate['A' + str(i+1)].top(1))
         remove_tip(right_pipette, protocol.params.dry_run)
         
-    protocol.comment("\nIncubating sample at 37°C for 4 hours. Mix continuously at "+str(shake_speed)+" rpm")
+    protocol.comment("\nIncubating sample at 47°C for ___ hours. Mix continuously at "+str(shake_speed)+" rpm")
     hs_mod.open_labware_latch()
     protocol.pause('''Put the lid on!!!''')
     hs_mod.close_labware_latch()
     hs_mod.set_and_wait_for_shake_speed(1450)       #1000 rpm
-    hs_mod.set_and_wait_for_temperature(37)         #37°C
+    hs_mod.set_and_wait_for_temperature(47)         #37°C
     protocol.pause('''Tell me when to stop!! (4hr or overnight incubation time)''')
     # protocol.delay(minutes=1/6 if protocol.params.dry_run else 240, msg="4 hour incubation at 37°C (10 seconds for dry run)")
     hs_mod.deactivate_shaker()
@@ -953,4 +794,9 @@ def run(protocol: protocol_api.ProtocolContext):
         left_pipette.blow_out(final_tube_rack.wells()[i].bottom(7))
         left_pipette.touch_tip()
         # left_pipette.return_tip()
+        remove_tip(left_pipette, protocol.params.dry_run)
+    for i in range (0,num_samples):
+        pick_up(left_pipette)
+        left_pipette.aspirate(5, formic_acid_storage.bottom(0.1), 0.2)
+        left_pipette.dispense(5, final_tube_rack.wells()[i].bottom(0.25), 0.2)
         remove_tip(left_pipette, protocol.params.dry_run)
