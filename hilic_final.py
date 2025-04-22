@@ -1,3 +1,7 @@
+# TODO: auto-load the buffers into correct reservoirs
+# TODO: auto-dilute the samples
+
+
 from opentrons import protocol_api
 import math
 import urllib.request
@@ -7,18 +11,6 @@ from opentrons import types
 # from datetime import datetime, timedelta
 import time
 from datetime import datetime
-# z = input(" 600l  ")
-# if z =="doodl":
-#     y = input("do u love skbidi")
-#     if y == "yessir":
-#         print("ur the alpha, so sigma")
-#         x = input("complete the lyrics: sigma sigma on the wall who")
-#         if x == "is the skibidiest of them all":
-#             print("bro u r litterally the GOAT like fr fr")
-#         else:
-#             print("are you google? because you have everything i've been searching for")
-#     else:
-#         print("people call me doodl, but you can call me anytime")
 metadata = {
     "protocolName": "SP3 HILIC protocol",
     "author": "Nico To",
@@ -370,7 +362,7 @@ def run(protocol: protocol_api.ProtocolContext):
                     if labware and labware.is_tiprack:
                         tips200[i] = staging_racks[rack_num]
                         # print(tips200[i])
-                        print(tip_box_slots[i])
+                        # print(tip_box_slots[i])
                         protocol.move_labware(
                             labware=staging_racks[rack_num],
                             new_location=tip_box_slots[i],
@@ -420,7 +412,7 @@ def run(protocol: protocol_api.ProtocolContext):
         '''
         for i in range (0, math.ceil(vol/pipette_max)):
             if i != math.ceil(vol/pipette_max)-1:
-                print(aspirate_height)
+                # print(aspirate_height)
                 pipette.aspirate(pipette_max, start_loc.bottom(aspirate_height), rate=rate)
                 pipette.dispense(pipette_max, end_loc.bottom(dispense_height), rate=rate)
             else:
@@ -445,7 +437,6 @@ def run(protocol: protocol_api.ProtocolContext):
         transfer_large_amt(dtt_stock_vol, dtt_stock_storage, dtt_working_storage, left_pipette, 0.5, aspirate_height=0.1, dispense_height=50)
         print(dtt_stock_vol)
         remove_tip(left_pipette, protocol.params.dry_run)
-        pick_up(left_pipette)
         pick_up(left_pipette)
         volume_of_protein_buffer_storate = get_vol_15ml_falcon(find_aspirate_height(left_pipette, protien_buffer_storage))
         volume_of_protein_buffer_storate-= dtt_working_vol-dtt_stock_vol
@@ -473,7 +464,7 @@ def run(protocol: protocol_api.ProtocolContext):
         # 56 C for 30 minutes
         protocol.move_labware(sample_plate, hs_mod, use_gripper=True)
         hs_mod.close_labware_latch()
-        # hs_mod.set_and_wait_for_shake_speed(1450)       #1000 rpm
+        hs_mod.set_and_wait_for_shake_speed(400)       #400 rpm
         hs_mod.set_and_wait_for_temperature(56)
         start_time = datetime.now()
         
@@ -532,6 +523,9 @@ def run(protocol: protocol_api.ProtocolContext):
         # protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
         # hs_mod.close_labware_latch()
         
+    # LOADING BUFFERS
+
+
     hs_mod.open_labware_latch()
     hs_mod.close_labware_latch()
     protocol.comment("-------------Equilibration ---------------")
