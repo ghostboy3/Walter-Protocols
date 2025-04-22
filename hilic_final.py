@@ -1,6 +1,6 @@
 # TODO: auto-load the buffers into correct reservoirs
 # TODO: auto-dilute the samples
-
+# TODO: Add lid
 
 from opentrons import protocol_api
 import math
@@ -223,7 +223,7 @@ def run(protocol: protocol_api.ProtocolContext):
     # buffer_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "B1", "reagent stock rack")   # equilibration, binding, and wash buffer
     working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "D2")
     final_tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "B1", "final solution rack")
-    falcon_tube_rack = protocol.load_labware("opentrons_15_tuberack_falcon_15ml_conical", "C2", "falcon rack")
+    falcon_tube_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "C2", "falcon rack")
 
     # dtt_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "C3", "DTT plate")
     
@@ -244,26 +244,33 @@ def run(protocol: protocol_api.ProtocolContext):
     # acetonitrile = protocol.define_liquid("acn", "acn", "#03fc31")
     # ammoniumAcetate = protocol.define_liquid("ammonium acetate", "ammonium acetate", "#fa05ee")
     # Loading Liquids
-    falcon_tube_rack["A2"].load_liquid(bead_sol, bead_amt)
+    falcon_tube_rack["A1"].load_liquid(bead_sol, bead_amt)
     falcon_tube_rack["B1"].load_liquid(dtt_stock, 200)
     falcon_tube_rack["C1"].load_liquid(iaa_stock, 200)
     falcon_tube_rack["B2"].load_liquid(empty_tube, 200)
     falcon_tube_rack["C2"].load_liquid(empty_tube, 200)
     falcon_tube_rack["A3"].load_liquid(protien_buffer, 200)
-    falcon_tube_rack["B3"].load_liquid(formic_acid, 200)
-    bead_storage = falcon_tube_rack["A2"]
+    falcon_tube_rack["B3"].load_liquid(binding_buffer, 200)
+    falcon_tube_rack["A4"].load_liquid(equilibration_buffer, 200)
+    falcon_tube_rack["B4"].load_liquid(wash_buffer, 200)
+    digestion_buffer_reservoir["H12"].load_liquid(formic_acid, 200)
+    bead_storage = falcon_tube_rack["A1"]
     dtt_stock_storage = falcon_tube_rack["B1"]
     dtt_working_storage = falcon_tube_rack["B2"]
     iaa_stock_storage = falcon_tube_rack["C1"]
     iaa_working_storage = falcon_tube_rack["C2"]
     protien_buffer_storage = falcon_tube_rack["A3"]
-    formic_acid_storage = falcon_tube_rack["B3"]
+    formic_acid_storage = digestion_buffer_reservoir["H12"]#falcon_tube_rack["B3"]
     # tube_rack["B1"].load_liquid(digestion_buffer, digestion_buffer_stock_amt)
     # digestion_buffer_storage = tube_rack["B1"]
     # digestion_buffer_storage = reservoir.columns_by_name()['1']
     # digestion_buffer_storage.load_liquid(digestion_buffer, digestion_buffer_stock_amt)
     falcon_tube_rack["A1"].load_liquid(digestion_buffer, digestion_buffer_per_sample_amt*num_samples)
     dig_buffer_location = falcon_tube_rack["A1"]
+    
+    equilibration_stock_buffer_storage = falcon_tube_rack["A4"]
+    binding_stock_buffer_storage = falcon_tube_rack["B3"]
+    wash_stock_buffer_storage = falcon_tube_rack["B4"]
     
     # falcon_tube_rack["A3"].load_liquid(water, 100)
     # water_location = falcon_tube_rack["A3"]
@@ -404,7 +411,7 @@ def run(protocol: protocol_api.ProtocolContext):
     
     def transfer_large_amt(vol, start_loc, end_loc, pipette, rate, aspirate_height = 0, dispense_height = 0):
         '''
-        vol: volume to transfer
+        vol: volume to transfer (ul)
         start_loc: location to aspirate from
         end_loc: location to dispense to
         pipette: pipette to use
@@ -493,9 +500,9 @@ def run(protocol: protocol_api.ProtocolContext):
             transfer_large_amt(amt_in_well, iaa_working_storage, digestion_buffer_reservoir.wells()[i+16], left_pipette, 0.5, dispense_height=1)
         remove_tip(left_pipette, protocol.params.dry_run)
         
-        # 30 min incubation
+        # 20 min incubation
         time_elasped = (datetime.now() - start_time).seconds
-        delay(seconds = 1800-time_elasped, msg = "30 minute DTT incubation at 56 C")
+        delay(seconds = 1200-time_elasped, msg = "20 minute DTT incubation at 56 C")
         # moving plate and adding IAA to plate
         hs_mod.deactivate_shaker()
         hs_mod.deactivate_heater()
@@ -511,7 +518,14 @@ def run(protocol: protocol_api.ProtocolContext):
             remove_tip(right_pipette, protocol.params.dry_run)
         # 45 minute IAA incubation at RT
         hs_mod.open_labware_latch()
-        protocol.pause('''IAA incubation for 45 minutes at room temperature''')
+        protocol.move_labware(sample_plate, hs_mod, use_gripper=True)
+        hs_mod.close_labware_latch()
+        hs_mod.deactivate_shaker()
+        hs_mod.deactivate_heater()
+        hs_mod.open_labware_latch()
+        protocol.move_labware(sample_plate, "A1", use_gripper=True)
+        # protocol.pause('''IAA incubation for 45 minutes at room temperature''')
+        
         # protocol.move_labware(sample_plate, hs_mod, use_gripper=True)
         # hs_mod.close_labware_latch()
         # hs_mod.set_and_wait_for_shake_speed(1450)
@@ -525,7 +539,44 @@ def run(protocol: protocol_api.ProtocolContext):
         
     # LOADING BUFFERS
 
-
+    protocol.comment("-------------Loading Buffers ---------------")
+    # equilibration buffer
+    start = 1
+    for i in range (0, math.ceil(equilibartion_buffer_amt/ 10)):
+        pick_up(left_pipette)
+        if i == math.ceil(equilibartion_buffer_amt/ 10)-1:      # on last iteration
+            amt_to_transfer = (equilibartion_buffer_amt % 10)*1000+500
+            print(amt_to_transfer)
+        else:
+            amt_to_transfer= 10500
+        transfer_large_amt(amt_to_transfer,equilibration_stock_buffer_storage,working_reagent_reservoir["A"+str(start)], left_pipette, 1)
+        start+=1
+    remove_tip(left_pipette, protocol.params.dry_run)
+    # binding buffer
+    start = 4
+    for i in range (0, math.ceil(binding_buffer_amt/ 10)):
+        pick_up(left_pipette)
+        if i == math.ceil(binding_buffer_amt/ 10)-1:      # on last iteration
+            amt_to_transfer = (binding_buffer_amt % 10)*1000+500
+            print(amt_to_transfer)
+        else:
+            amt_to_transfer= 10500
+        transfer_large_amt(amt_to_transfer,binding_stock_buffer_storage,working_reagent_reservoir["A"+str(start)], left_pipette, 1)
+        start+=1
+    remove_tip(left_pipette, protocol.params.dry_run)
+    #wash buffer
+    start = 7
+    for i in range (0, math.ceil(wash_buffer_amt/ 10)):
+        pick_up(left_pipette)
+        if i == math.ceil(wash_buffer_amt/ 10)-1:      # on last iteration
+            amt_to_transfer = (wash_buffer_amt % 10)*1000+500
+            print(amt_to_transfer)
+        else:
+            amt_to_transfer= 10500
+        transfer_large_amt(amt_to_transfer,wash_stock_buffer_storage,working_reagent_reservoir["A"+str(start)], left_pipette, 1)
+        start+=1
+    remove_tip(left_pipette, protocol.params.dry_run)
+    
     hs_mod.open_labware_latch()
     hs_mod.close_labware_latch()
     protocol.comment("-------------Equilibration ---------------")
@@ -722,7 +773,7 @@ def run(protocol: protocol_api.ProtocolContext):
         # hs_mod.open_labware_latch()
         # protocol.move_labware(reagent_plate, hs_mod, use_gripper=True)
         # hs_mod.close_labware_latch()
-        hs_mod.set_and_wait_for_shake_speed(shake_speed)       #1300 rpm
+        hs_mod.set_and_wait_for_shake_speed(1000)       #1300 rpm
         delay(60)
         hs_mod.deactivate_shaker()
         hs_mod.open_labware_latch()
