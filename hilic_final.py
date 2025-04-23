@@ -4,7 +4,6 @@
 from opentrons import protocol_api
 import math
 import urllib.request
-import urllib.parse
 import json
 from opentrons import types
 # from datetime import datetime, timedelta
@@ -24,7 +23,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="numSamples",
         display_name="Number of Samples",
         description="Number of samples",
-        default=24,
+        default=5,
         minimum=1,
         maximum=96,
         unit="samples"
@@ -62,14 +61,14 @@ def add_parameters(parameters: protocol_api.Parameters):
         maximum=1000,
         unit="mM"
     )
-    parameters.add_int(
+    parameters.add_int(     #ASK LAURA ABOUT THIS, SHOULDN'T IT BE 50UG/50UL
         variable_name="protein_stock_conc",
         display_name="Concentration of Protien Stock",
-        description="_______ ug/ul protien.",
+        description="_______ mg protien.",
         default=50,
         minimum= 0,
-        maximum=1000,
-        unit="ug/ul"
+        maximum=100,
+        unit="mg"
     )
     
     parameters.add_int(
@@ -83,7 +82,12 @@ def add_parameters(parameters: protocol_api.Parameters):
     )
 
     # OPTION TO DILUTE PROTEIN SAMPLE BASED ON CONCENTRATION
-    
+    parameters.add_bool(
+        variable_name="dilute_sample",
+        display_name="Dilute sample",
+        description="Dilute protien sample based on concentration",
+        default=True
+    )
     parameters.add_bool(
         variable_name="dry_run",
         display_name="Dry Run",
@@ -158,6 +162,14 @@ def get_vol_50ml_falcon(height):
     return volume
 
 
+protien_dilution_data = {
+  1: 1.51,
+  2: 1.96,
+  3: 1.74,
+  4: 1.43,
+  5: 1.59
+}
+
 
 def run(protocol: protocol_api.ProtocolContext):
     #defining variables
@@ -169,9 +181,10 @@ def run(protocol: protocol_api.ProtocolContext):
     dtt_conc = protocol.params.dtt_conc
     iaa_conc = protocol.params.iaa_conc
     
-    bead_amt = max(protocol.params.protein_stock_conc/4, 5)      #µl
+    protein_stock_conc = protocol.params.protein_stock_conc
+    bead_amt = max(protein_stock_conc/4, 5)      #µl
     protein_sample_amt = 60         # Includes DTT + IAA + protien + buffer
-    protein_added_to_beads =protein_sample_amt*2      #ul
+    protein_added_to_beads =protein_sample_amt*2      #ul (includes binding buffer)
     equilibartion_buffer_amt = (300*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
     binding_buffer_amt = (40*8*(math.ceil(num_samples/8)) + 500)/1000       #ml
     wash_buffer_amt = (300*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
@@ -447,6 +460,28 @@ def run(protocol: protocol_api.ProtocolContext):
 
 
     pipette_max = 200-5
+
+    if protocol.params.dilute_sample:
+        hs_mod.close_labware_latch()
+        sample_stock_pre_dilution_plate = hs_mod.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt")
+        for sample_num, conc in  protien_dilution_data.items():
+            # v1 = (conc * (protein_sample_amt-10))/protein_stock_conc
+            v1 = ((protein_stock_conc/(protein_sample_amt-10)) * (protein_sample_amt-10))/conc
+            print(v1)
+            pick_up(left_pipette)
+            left_pipette.aspirate(v1, sample_stock_pre_dilution_plate.wells()[sample_num-1], 0.1)
+            left_pipette.dispense(v1, sample_plate.wells()[sample_num-1], 0.1)
+            left_pipette.blow_out(sample_plate.wells()[sample_num-1].top())
+            remove_tip(left_pipette)
+            pick_up(left_pipette)
+            left_pipette.aspirate(protein_sample_amt-10-v1, protien_buffer_storage, 0.1)
+            left_pipette.dispense(protein_sample_amt-10-v1, sample_plate.wells()[sample_num-1], 0.1)
+            left_pipette.mix(3,protein_sample_amt-15, sample_plate.wells()[sample_num-1], 0.3)
+            left_pipette.blow_out(sample_plate.wells()[sample_num-1].top())
+            remove_tip(left_pipette)
+        hs_mod.open_labware_latch()
+        protocol.move_labware(sample_stock_pre_dilution_plate, chute, use_gripper=True)
+
 
     if protocol.params.reduction_alkylation:
         dtt_final_conc = 20     #20 mM
