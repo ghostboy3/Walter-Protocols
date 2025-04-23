@@ -184,7 +184,7 @@ def run(protocol: protocol_api.ProtocolContext):
     protein_sample_amt = 60         # Includes DTT + IAA + protien + buffer
     protein_added_to_beads =protein_sample_amt*2      #ul (includes binding buffer)
     equilibartion_buffer_amt = (300*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
-    binding_buffer_amt = (40*8*(math.ceil(num_samples/8)) + 500)/1000       #ml
+    binding_buffer_amt = (40*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
     wash_buffer_amt = (300*8*(math.ceil(num_samples/8)) + 1000)/1000       #ml
     digestion_buffer_per_sample_amt = 100#protocol.params.digestion_buffer_per_sample_amt       #100-150µl
     
@@ -493,8 +493,8 @@ def run(protocol: protocol_api.ProtocolContext):
         dtt_stock_vol = (dtt_working_stock_conc*dtt_working_vol)/dtt_conc       # amt of stock that needs to be transfered to create working dtt solution
         # LOADING THE DTT
         pick_up(left_pipette)
-        volume_of_dtt_stock_storage_tube = get_vol_15ml_falcon(find_aspirate_height(left_pipette, dtt_stock_storage))
-        volume_of_dtt_stock_storage_tube -= dtt_stock_vol
+        # volume_of_dtt_stock_storage_tube = get_vol_15ml_falcon(find_aspirate_height(left_pipette, dtt_stock_storage))
+        # volume_of_dtt_stock_storage_tube -= dtt_stock_vol
         # print(volume_of_dtt_stock_storage_tube)
         transfer_large_amt(dtt_stock_vol, dtt_stock_storage, dtt_working_storage, left_pipette, 0.5, aspirate_height=0.1, dispense_height=50)
         print(dtt_stock_vol)
@@ -535,8 +535,8 @@ def run(protocol: protocol_api.ProtocolContext):
         iaa_working_vol = pipette_min * num_samples + 8*amt_extra_in_2ml_reservoir +50
         iaa_stock_vol = (iaa_working_stock_conc*iaa_working_vol)/iaa_conc       # amt of stock that needs to be transfered to create working dtt solution
         pick_up(left_pipette)
-        volume_of_iaa_stock_storage_tube = get_vol_15ml_falcon(find_aspirate_height(left_pipette, iaa_stock_storage))
-        volume_of_iaa_stock_storage_tube -= iaa_stock_vol
+        # volume_of_iaa_stock_storage_tube = get_vol_15ml_falcon(find_aspirate_height(left_pipette, iaa_stock_storage))
+        # volume_of_iaa_stock_storage_tube -= iaa_stock_vol
         transfer_large_amt(iaa_stock_vol, iaa_stock_storage, iaa_working_storage, left_pipette, 0.5,aspirate_height=0.1, dispense_height=50)
         remove_tip(left_pipette, protocol.params.dry_run)
         pick_up(left_pipette)
