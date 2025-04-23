@@ -1,4 +1,3 @@
-# TODO: auto-dilute the samples
 # TODO: Add lid
 
 from opentrons import protocol_api
@@ -67,7 +66,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         description="_______ mg protien.",
         default=50,
         minimum= 0,
-        maximum=100,
+        maximum=500,
         unit="mg"
     )
     
@@ -81,7 +80,6 @@ def add_parameters(parameters: protocol_api.Parameters):
         unit="C"
     )
 
-    # OPTION TO DILUTE PROTEIN SAMPLE BASED ON CONCENTRATION
     parameters.add_bool(
         variable_name="dilute_sample",
         display_name="Dilute sample",
