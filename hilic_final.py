@@ -22,7 +22,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="numSamples",
         display_name="Number of Samples",
         description="Number of samples",
-        default=24,
+        default=96,
         minimum=1,
         maximum=96,
         unit="samples"
@@ -78,6 +78,18 @@ def add_parameters(parameters: protocol_api.Parameters):
         minimum= 20,
         maximum=100,
         unit="C"
+    )
+    parameters.add_int(
+        variable_name="incubation_time",
+        display_name="Incubation Time",
+        choices=[
+            {"display_name": "4 hrs", "value": 4},
+            {"display_name": "3 hrs", "value": 3},
+            {"display_name": "2 hrs", "value": 2},
+            {"display_name": "1 hrs", "value": 1},
+            {"display_name": "infinite", "value": 0},
+        ],
+        default=2,
     )
 
     parameters.add_bool(
@@ -212,7 +224,11 @@ def run(protocol: protocol_api.ProtocolContext):
     # final_sample_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B1", "reagent plate")
     # buffer_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "B1", "reagent stock rack")   # equilibration, binding, and wash buffer
     working_reagent_reservoir = protocol.load_labware("nest_12_reservoir_15ml", "D2")
-    final_tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "B1", "final solution rack")
+    
+    if num_samples > 24:
+        final_tube_rack = protocol.load_labware("opentrons_96_aluminumblock_generic_pcr_strip_200ul", "B1", "final solution rack") 
+    else:
+        final_tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "B1", "final solution rack")
     falcon_tube_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "C2", "falcon rack")
 
     # dtt_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "C3", "DTT plate")
@@ -841,7 +857,13 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.close_labware_latch()
     hs_mod.set_and_wait_for_shake_speed(1450)       #1000 rpm
     hs_mod.set_and_wait_for_temperature(protocol.params.incubation_temp)         #37°C
-    protocol.pause('''Tell me when to stop!! (4hr or overnight incubation time)''')
+    if protocol.params.incubation_time == 0:
+        check_tips()
+        protocol.pause('''Tell me when to stop!! (overnight incubation time)''')
+    else:
+        delay(protocol.params.incubation_time * 60*60)
+
+
     # protocol.delay(minutes=1/6 if protocol.params.dry_run else 240, msg="4 hour incubation at 37°C (10 seconds for dry run)")
     hs_mod.deactivate_shaker()
     hs_mod.deactivate_heater()
