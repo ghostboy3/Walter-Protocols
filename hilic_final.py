@@ -1,4 +1,4 @@
-# TODO: Add lid
+# TODO: 96 samples
 
 from opentrons import protocol_api
 import math
@@ -22,7 +22,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="numSamples",
         display_name="Number of Samples",
         description="Number of samples",
-        default=5,
+        default=24,
         minimum=1,
         maximum=96,
         unit="samples"
@@ -178,6 +178,7 @@ def run(protocol: protocol_api.ProtocolContext):
     bead_settle_time = 10 #seconds
     dtt_conc = protocol.params.dtt_conc
     iaa_conc = protocol.params.iaa_conc
+    load_buffers = False
     
     protein_stock_conc = protocol.params.protein_stock_conc
     bead_amt = max(protein_stock_conc/4, 5)      #µl
@@ -192,9 +193,10 @@ def run(protocol: protocol_api.ProtocolContext):
     amt_extra_in_2ml_reservoir = 50
     
     #loading tips
-    # if protocol.params.create_buffers == True:      # A3 has p1000 tips
-    tips200 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", "A3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "B3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "C3")]
-    # tips200 = [protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "A3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "B3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "C3")]
+    if load_buffers:
+        tips200 = [protocol.load_labware("opentrons_flex_96_filtertiprack_1000uL", "A3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "B3")]
+    else:
+        tips200 = [protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "A3"), protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "B3")]
 
     chute = protocol.load_waste_chute()
     left_pipette = protocol.load_instrument("flex_1channel_1000", "left", tip_racks=tips200)
@@ -216,7 +218,9 @@ def run(protocol: protocol_api.ProtocolContext):
     # dtt_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "C3", "DTT plate")
     
     # trash_reservoir = protocol.load_labware("nest_1_reservoir_195ml", "C2", "trash reservoir")
-    
+    lid = protocol.load_labware(
+            "opentrons_tough_pcr_auto_sealing_lid", location="C3"
+        )
     #defining liquids
     bead_sol = protocol.define_liquid("HILIC Bead Solution", "An alloquat of the HILIC bead solution", "#000000")
     dtt_stock = protocol.define_liquid("DTT Stock", "Dtt Stock", "#fcba03")
@@ -260,19 +264,19 @@ def run(protocol: protocol_api.ProtocolContext):
     binding_stock_buffer_storage = falcon_tube_rack["B3"]
     wash_stock_buffer_storage = falcon_tube_rack["B4"]
 
-    # working_reagent_reservoir["A1"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
-    # working_reagent_reservoir["A2"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
-    # working_reagent_reservoir["A3"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
+    working_reagent_reservoir["A1"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
+    working_reagent_reservoir["A2"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
+    working_reagent_reservoir["A3"].load_liquid(equilibration_buffer, equilibartion_buffer_amt)
     equilibration_buffer_storage = [working_reagent_reservoir["A1"], working_reagent_reservoir["A2"], working_reagent_reservoir["A3"]]
     
-    # working_reagent_reservoir["A4"].load_liquid(binding_buffer, binding_buffer_amt)
-    # working_reagent_reservoir["A5"].load_liquid(binding_buffer, binding_buffer_amt)
-    # working_reagent_reservoir["A6"].load_liquid(binding_buffer, binding_buffer_amt)
+    working_reagent_reservoir["A4"].load_liquid(binding_buffer, binding_buffer_amt)
+    working_reagent_reservoir["A5"].load_liquid(binding_buffer, binding_buffer_amt)
+    working_reagent_reservoir["A6"].load_liquid(binding_buffer, binding_buffer_amt)
     binding_buffer_storage = [working_reagent_reservoir["A4"], working_reagent_reservoir["A5"], working_reagent_reservoir["A6"]]
 
-    # working_reagent_reservoir["A7"].load_liquid(wash_buffer, wash_buffer_amt)
-    # working_reagent_reservoir["A8"].load_liquid(wash_buffer, wash_buffer_amt)
-    # working_reagent_reservoir["A9"].load_liquid(wash_buffer, wash_buffer_amt)
+    working_reagent_reservoir["A7"].load_liquid(wash_buffer, wash_buffer_amt)
+    working_reagent_reservoir["A8"].load_liquid(wash_buffer, wash_buffer_amt)
+    working_reagent_reservoir["A9"].load_liquid(wash_buffer, wash_buffer_amt)
     wash_buffer_storage = [working_reagent_reservoir["A7"], working_reagent_reservoir["A8"], working_reagent_reservoir["A9"]]
     # trash1=trash_reservoir.wells()[0].bottom(7)
     staging_slots = ['A4', 'B4', 'C4', 'D4']
@@ -322,8 +326,8 @@ def run(protocol: protocol_api.ProtocolContext):
         nonlocal staging_racks
         nonlocal count
         # tip_box = protocol.load_labware('opentrons_flex_96_filtertiprack_1000uL', 'A3')
-        for i in range (0,3):
-            tip_box_slots = ['A3', 'B3', 'C3']
+        tip_box_slots = ['A3', 'B3']
+        for i in range (0,len(tip_box_slots)):
             # aaaaaaaaaaaaaaaaa
             try:
                 bottom_right_well = tips200[i].wells_by_name()['H12']
@@ -409,52 +413,53 @@ def run(protocol: protocol_api.ProtocolContext):
     
 
     # LOADING BUFFERS
-    protocol.comment("-------------Loading Buffers ---------------")
-    # equilibration buffer
-    start = 1
-    pick_up(left_pipette)
-    vol_eq_stock = get_vol_50ml_falcon(find_aspirate_height(left_pipette, equilibration_stock_buffer_storage))
-    for i in range (0, math.ceil(equilibartion_buffer_amt/ 10)):
-        if i == math.ceil(equilibartion_buffer_amt/ 10)-1:      # on last iteration
-            amt_to_transfer = (equilibartion_buffer_amt % 10)*1000+500
-            print(amt_to_transfer)
-        else:
-            amt_to_transfer= 10500
-        transfer_large_amt(amt_to_transfer,equilibration_stock_buffer_storage,working_reagent_reservoir["A"+str(start)], left_pipette, aspirate_height=get_height_50ml_falcon(vol_eq_stock-amt_to_transfer), rate=1)
-        vol_eq_stock-=amt_to_transfer
-        start+=1
-    remove_tip(left_pipette, protocol.params.dry_run)
-    # binding buffer
-    start = 4
-    pick_up(left_pipette)
-    vol_bb_stock = get_vol_50ml_falcon(find_aspirate_height(left_pipette,binding_stock_buffer_storage))
-    for i in range (0, math.ceil(binding_buffer_amt/ 10)):
-        if i == math.ceil(binding_buffer_amt/ 10)-1:      # on last iteration
-            amt_to_transfer = (binding_buffer_amt % 10)*1000+500
-            print(amt_to_transfer)
-        else:
-            amt_to_transfer= 10500
-        transfer_large_amt(amt_to_transfer,binding_stock_buffer_storage,working_reagent_reservoir["A"+str(start)], left_pipette, aspirate_height=get_height_50ml_falcon(vol_bb_stock-amt_to_transfer), rate=1)
-        vol_bb_stock-=amt_to_transfer
-        start+=1
-    remove_tip(left_pipette, protocol.params.dry_run)
-    #wash buffer
-    start = 7
-    pick_up(left_pipette)
-    vol_wb_stock = get_vol_50ml_falcon(find_aspirate_height(left_pipette,wash_stock_buffer_storage))
-    for i in range (0, math.ceil(wash_buffer_amt/ 10)):
-        if i == math.ceil(wash_buffer_amt/ 10)-1:      # on last iteration
-            amt_to_transfer = (wash_buffer_amt % 10)*1000+500
-            print(amt_to_transfer)
-        else:
-            amt_to_transfer= 10500
-        transfer_large_amt(amt_to_transfer,wash_stock_buffer_storage,working_reagent_reservoir["A"+str(start)], left_pipette, aspirate_height=get_height_50ml_falcon(vol_wb_stock-amt_to_transfer), rate=1)
-        vol_wb_stock-=amt_to_transfer
-        start+=1
-    remove_tip(left_pipette, protocol.params.dry_run)
-    protocol.pause("replace A3 tip rack with 200uL tip rack")
-    protocol.deck.__delitem__("A3")
-    tips200[0]=protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "A3")
+    if load_buffers:
+        protocol.comment("-------------Loading Buffers ---------------")
+        # equilibration buffer
+        start = 1
+        pick_up(left_pipette)
+        vol_eq_stock = get_vol_50ml_falcon(find_aspirate_height(left_pipette, equilibration_stock_buffer_storage))
+        for i in range (0, math.ceil(equilibartion_buffer_amt/ 10)):
+            if i == math.ceil(equilibartion_buffer_amt/ 10)-1:      # on last iteration
+                amt_to_transfer = (equilibartion_buffer_amt % 10)*1000+500
+                print(amt_to_transfer)
+            else:
+                amt_to_transfer= 10500
+            transfer_large_amt(amt_to_transfer,equilibration_stock_buffer_storage,working_reagent_reservoir["A"+str(start)], left_pipette, aspirate_height=get_height_50ml_falcon(vol_eq_stock-amt_to_transfer), rate=1)
+            vol_eq_stock-=amt_to_transfer
+            start+=1
+        remove_tip(left_pipette, protocol.params.dry_run)
+        # binding buffer
+        start = 4
+        pick_up(left_pipette)
+        vol_bb_stock = get_vol_50ml_falcon(find_aspirate_height(left_pipette,binding_stock_buffer_storage))
+        for i in range (0, math.ceil(binding_buffer_amt/ 10)):
+            if i == math.ceil(binding_buffer_amt/ 10)-1:      # on last iteration
+                amt_to_transfer = (binding_buffer_amt % 10)*1000+500
+                print(amt_to_transfer)
+            else:
+                amt_to_transfer= 10500
+            transfer_large_amt(amt_to_transfer,binding_stock_buffer_storage,working_reagent_reservoir["A"+str(start)], left_pipette, aspirate_height=get_height_50ml_falcon(vol_bb_stock-amt_to_transfer), rate=1)
+            vol_bb_stock-=amt_to_transfer
+            start+=1
+        remove_tip(left_pipette, protocol.params.dry_run)
+        #wash buffer
+        start = 7
+        pick_up(left_pipette)
+        vol_wb_stock = get_vol_50ml_falcon(find_aspirate_height(left_pipette,wash_stock_buffer_storage))
+        for i in range (0, math.ceil(wash_buffer_amt/ 10)):
+            if i == math.ceil(wash_buffer_amt/ 10)-1:      # on last iteration
+                amt_to_transfer = (wash_buffer_amt % 10)*1000+500
+                print(amt_to_transfer)
+            else:
+                amt_to_transfer= 10500
+            transfer_large_amt(amt_to_transfer,wash_stock_buffer_storage,working_reagent_reservoir["A"+str(start)], left_pipette, aspirate_height=get_height_50ml_falcon(vol_wb_stock-amt_to_transfer), rate=1)
+            vol_wb_stock-=amt_to_transfer
+            start+=1
+        remove_tip(left_pipette, protocol.params.dry_run)
+        protocol.pause("replace A3 tip rack with 200uL tip rack")
+        protocol.deck.__delitem__("A3")
+        tips200[0]=protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", "A3")
 
 
     pipette_max = 200-5
@@ -828,7 +833,11 @@ def run(protocol: protocol_api.ProtocolContext):
         
     protocol.comment("\nIncubating sample at 47°C for ___ hours. Mix continuously at "+str(shake_speed)+" rpm")
     hs_mod.open_labware_latch()
-    protocol.pause('''Put the lid on!!!''')
+
+    protocol.move_labware(
+        labware=lid, new_location=reagent_plate, use_gripper=True
+    )
+
     hs_mod.close_labware_latch()
     hs_mod.set_and_wait_for_shake_speed(1450)       #1000 rpm
     hs_mod.set_and_wait_for_temperature(protocol.params.incubation_temp)         #37°C
@@ -837,10 +846,10 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.deactivate_shaker()
     hs_mod.deactivate_heater()
     hs_mod.open_labware_latch()
-    protocol.pause('''Remove the lid and place on magnetic block''')
-
+    # protocol.pause('''Remove the lid and place on magnetic block''')
+    protocol.move_labware(lid, "C3", use_gripper=True)
+    protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     protocol.comment("\nRecovering the microparticles on magnetic separator and aspirating the supernatant containing peptides with a pipette")
-    protocol.move_labware(reagent_plate, magnetic_block, use_gripper=False)
 
 
     # "waiting for beads to settle (20 sec)")
