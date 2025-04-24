@@ -545,6 +545,10 @@ def run(protocol: protocol_api.ProtocolContext):
         # 56 C for 30 minutes
         protocol.move_labware(sample_plate, hs_mod, use_gripper=True)
         hs_mod.close_labware_latch()
+        hs_mod.open_labware_latch()
+        protocol.move_labware(labware=lid, new_location=sample_plate, use_gripper=True)
+        hs_mod.close_labware_latch()        
+        
         hs_mod.set_and_wait_for_shake_speed(400)       #400 rpm
         hs_mod.set_and_wait_for_temperature(56)
         start_time = datetime.now()
@@ -578,9 +582,11 @@ def run(protocol: protocol_api.ProtocolContext):
         time_elasped = (datetime.now() - start_time).seconds
         delay(seconds = 1200-time_elasped, msg = "20 minute DTT incubation at 56 C")
         # moving plate and adding IAA to plate
+        hs_mod.deactivate_heater()
         hs_mod.deactivate_shaker()
         hs_mod.deactivate_heater()
         hs_mod.open_labware_latch()
+        protocol.move_labware(lid, "C3", use_gripper=True)
         protocol.move_labware(sample_plate, "A1", use_gripper=True)
 
         for i in range (0, math.ceil(num_samples/8)):
@@ -594,9 +600,15 @@ def run(protocol: protocol_api.ProtocolContext):
         hs_mod.open_labware_latch()
         protocol.move_labware(sample_plate, hs_mod, use_gripper=True)
         hs_mod.close_labware_latch()
+        hs_mod.open_labware_latch()
+        protocol.move_labware(lid, sample_plate, use_gripper=True)
+        hs_mod.close_labware_latch()
+        hs_mod.set_and_wait_for_shake_speed(400)    #400 rpm
+        delay(seconds=2700, msg="45 minute IAA incubation at room temperature")
         hs_mod.deactivate_shaker()
         hs_mod.deactivate_heater()
         hs_mod.open_labware_latch()
+        protocol.move_labware(lid, "C3", use_gripper=True)
         protocol.move_labware(sample_plate, "A1", use_gripper=True)
         # protocol.pause('''IAA incubation for 45 minutes at room temperature''')
         
@@ -626,10 +638,14 @@ def run(protocol: protocol_api.ProtocolContext):
         num_transfers = math.ceil(total_bead_amt/(change_tip_after * bead_amt)) #math.ceil(total_bead_amt / (math.floor((pipette_max-10)/bead_amt)*bead_amt))
         for i in range (0, num_transfers):
             if i == num_transfers - 1:      # on last iteration
-                aspirate_amt = num_transfers*bead_amt - bead_amt*(num_transfers-1)+3
+                aspirate_amt = num_transfers*bead_amt*change_tip_after - bead_amt*(num_transfers-1)*change_tip_after+3
                 pick_up(left_pipette)
                 left_pipette.mix(3, total_bead_amt-bead_amt*well_counter, bead_storage)
                 left_pipette.aspirate(aspirate_amt, bead_storage.bottom(0.5))
+                print(math.floor(aspirate_amt/bead_amt))
+                # print("aspirate amt: " + str(aspirate_amt))
+                # print("num_transfers: " + str(num_transfers))
+                # print("bead_amt: " + str(bead_amt))
                 for x in range (0, math.floor(aspirate_amt/bead_amt)):
                     left_pipette.dispense(bead_amt, reagent_plate.wells()[well_counter])
                     well_counter += 1
@@ -646,13 +662,12 @@ def run(protocol: protocol_api.ProtocolContext):
                     well_counter += 1
                 left_pipette.blow_out(bead_storage.top())
                 remove_tip(left_pipette, protocol.params.dry_run)
-
+        print(well_counter)
     protocol.comment("\nPlacing tube on magnetic separator and allowing 10s for microparticles to clear")
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     protocol.delay(seconds=bead_settle_time+5, msg="waiting 7 seconds for microparticles to clear")
     aspirate_spuernatent_to_trash(right_pipette, bead_amt - (bead_amt-5), 0.1, discard_tip=False)
-
 
     protocol.comment("\nWashing and equilibrating the microparticles in "+str(wash_volume) + "µl Equilibration Buffer (2 times)")
     for wash_num in range (0,num_washes):     # all washes before the last wash with EQ buffer
