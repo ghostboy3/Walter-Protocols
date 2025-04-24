@@ -1,5 +1,3 @@
-# TODO: 96 samples
-
 from opentrons import protocol_api
 import math
 import urllib.request
