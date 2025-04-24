@@ -20,7 +20,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="numSamples",
         display_name="Number of Samples",
         description="Number of samples",
-        default=96,
+        default=2,
         minimum=1,
         maximum=96,
         unit="samples"
@@ -764,12 +764,18 @@ def run(protocol: protocol_api.ProtocolContext):
     well_counter = 0
     left_pipette.pick_up_tip()
     for well_counter in range (0,8):
-        if i == 0 or i == 1:
-            transfer_large_amt(250, dig_buffer_location, digestion_buffer_reservoir.wells()[well_counter], left_pipette, 0.25)
-            well_counter += 1
+        if (num_samples % 8) > well_counter:
+            transfer_vol = (math.ceil(num_samples/8))*100 +50       # transfer into each well
         else:
-            transfer_large_amt(150, dig_buffer_location, digestion_buffer_reservoir.wells()[well_counter], left_pipette, 0.25)
-            well_counter+=1
+            transfer_vol = (math.floor(num_samples/8))*100 +50       # transfer into each well
+        transfer_large_amt(transfer_vol, dig_buffer_location, digestion_buffer_reservoir.wells()[well_counter], left_pipette, 0.25)
+        
+        # if i == 0 or i == 1:
+        #     transfer_large_amt(250, dig_buffer_location, digestion_buffer_reservoir.wells()[well_counter], left_pipette, 0.25)
+        #     well_counter += 1
+        # else:
+        #     transfer_large_amt(150, dig_buffer_location, digestion_buffer_reservoir.wells()[well_counter], left_pipette, 0.25)
+        #     well_counter+=1
         # left_pipette.aspirate(aspirate_vol, dig_buffer_location, 0.25)
     #     for i in range (0, math.ceil(transfer_vol/pipette_max)):
     #         if i != math.ceil(transfer_vol/pipette_max):    # not on last iteration
@@ -849,6 +855,9 @@ def run(protocol: protocol_api.ProtocolContext):
         right_pipette.blow_out(reagent_plate['A' + str(i+1)].top(1))
         right_pipette.blow_out(reagent_plate['A' + str(i+1)].top(1))
         remove_tip(right_pipette, protocol.params.dry_run)
+        print('A' + str(i+1))
+    # pick_up(left_pipette)
+    # pick_up(left_pipette)
     
     #MIXING DIGESTION BUFFER
     for i in range (0, math.ceil(num_samples/8)):
