@@ -1,7 +1,7 @@
 metadata = {
-    "protocolName": "Single-plate Bradford protocol",
+    "protocolName": "Single-plate Bradford protocol Standards no QT",
     "author": "Nico To",
-    "description": "Bradford for 1-24 samples",
+    "description": "Bradford for 1-24 samples. No quick transfer when creating standards.",
 }
 requirements = {"robotType": "Flex", "apiLevel": "2.20"}
 import math
@@ -53,8 +53,8 @@ def add_parameters(parameters):
         variable_name="number_samples",
         display_name="number_samples",
         description="Number of input samples.",
-        default=24,
-        minimum=1,
+        default=0,
+        minimum=0,
         maximum=40,
         unit="samples",
     )
@@ -355,26 +355,43 @@ def run(protocol: protocol_api.ProtocolContext):
         vol_in_15_facon_dilutent
     except NameError:
         vol_in_15_facon_dilutent = get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
-    for i in range(0, len(dilutent_pipette_vols)):
-        vol_in_15_facon_dilutent -= dilutent_pipette_vols[i]+10
-        left_pipette.aspirate(
-            dilutent_pipette_vols[i] + 10, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon_dilutent)), 0.5
-        )
-        amt_in_tip = dilutent_pipette_vols[i] + 10
-        while amt_in_tip > 10:
-            try:        # someties amt_in_tip is 10.0000000001
-                left_pipette.dispense(
-                    buffer_vols[well_num],
-                    bsa_rack[tube_spots[well_num]],
-                    0.5,
-                )
-                amt_in_tip -= buffer_vols[well_num]
-            except:
-                print(amt_in_tip)
-                break
-            
-            well_num += 1
-    remove_tip(left_pipette)
+    protein_addition_quick_transfer = False
+    if protein_addition_quick_transfer:
+        for i in range(0, len(dilutent_pipette_vols)):
+            vol_in_15_facon -= dilutent_pipette_vols[i]+10
+            left_pipette.aspirate(
+                dilutent_pipette_vols[i] + 10, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.5
+            )
+            amt_in_tip = dilutent_pipette_vols[i] + 10
+            while amt_in_tip > 10:
+                try:        # someties amt_in_tip is 10.0000000001
+                    left_pipette.dispense(
+                        buffer_vols[well_num],
+                        bsa_rack[tube_spots[well_num]],
+                        0.5,
+                    )
+                    amt_in_tip -= buffer_vols[well_num]
+                except:
+                    # print(amt_in_tip)
+                    break
+
+                well_num += 1
+        remove_tip(left_pipette)
+    else:
+        rack_order = ["B1", "B2", "B3", "B4", "B5", "B6", "C1"]
+        well_order = ["A", "B", "C", "D", "E", "F", "G"]
+        # left_pipette.pick_up_tip()
+        vol_in_15_facon= get_vol_15ml_falcon(find_aspirate_height(left_pipette, reagent_a_location))
+        for i in range (0, len(buffer_vols)):
+            if left_pipette.has_tip == False:
+                left_pipette.pick_up_tip()
+            vol_in_15_facon -= buffer_vols[i]
+            left_pipette.aspirate(
+                buffer_vols[i], dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.5
+            )
+            left_pipette.dispense(buffer_vols[i],bsa_rack[tube_spots[i]])
+            left_pipette.blow_out(bsa_rack[rack_order[i]].top())
+            remove_tip(left_pipette)
 
     rack_order = ["B1", "B2", "B3", "B4", "B5", "B6", "C1"]
     well_order = ["A", "B", "C", "D", "E", "F", "G"]
