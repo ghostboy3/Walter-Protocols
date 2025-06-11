@@ -382,16 +382,17 @@ def run(protocol: protocol_api.ProtocolContext):
         well_order = ["A", "B", "C", "D", "E", "F", "G"]
         # left_pipette.pick_up_tip()
         vol_in_15_facon= get_vol_15ml_falcon(find_aspirate_height(left_pipette, reagent_a_location))
+        if left_pipette.has_tip == False:
+            left_pipette.pick_up_tip()
         for i in range (0, len(buffer_vols)):
-            if left_pipette.has_tip == False:
-                left_pipette.pick_up_tip()
             vol_in_15_facon -= buffer_vols[i]
-            left_pipette.aspirate(
-                buffer_vols[i], dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.5
-            )
-            left_pipette.dispense(buffer_vols[i],bsa_rack[tube_spots[i]])
-            left_pipette.blow_out(bsa_rack[rack_order[i]].top())
-            remove_tip(left_pipette)
+            if buffer_vols[i] > 0:
+                left_pipette.aspirate(
+                    buffer_vols[i], dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_facon)), 0.5
+                )
+                left_pipette.dispense(buffer_vols[i],bsa_rack[tube_spots[i]])
+                left_pipette.blow_out(bsa_rack[rack_order[i]].top())
+        remove_tip(left_pipette)
 
     rack_order = ["B1", "B2", "B3", "B4", "B5", "B6", "C1"]
     well_order = ["A", "B", "C", "D", "E", "F", "G"]
