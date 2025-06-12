@@ -1,5 +1,5 @@
 metadata = {
-    "protocolName": "Single-plate Bradford protocol Standards no QT",
+    "protocolName": "Single-plate Bradford protocol Standards no QT at all",
     "author": "Nico To",
     "description": "Bradford for 1-24 samples. No quick transfer when creating standards.",
 }
@@ -223,7 +223,7 @@ def run(protocol: protocol_api.ProtocolContext):
     left_pipette.pick_up_tip()
     # vol_in_15_falcon_reagent_a = get_vol_15ml_falcon(find_aspirate_height(left_pipette, reagent_a_location))
 
-    for i in range (0, num_transfers):
+    for i in range (0, num_transfers):      # FIX THIS
         if i != num_transfers-1:    # not on last iteration
             aspirate_vol = pipette_max - pipette_max%amt_reagent_a
         else:
@@ -289,10 +289,10 @@ def run(protocol: protocol_api.ProtocolContext):
         col_num = replication_mode+1
         for i in range (0, math.ceil(number_samples/8)):
             right_pipette.pick_up_tip()
-            right_pipette.aspirate(working_sample_vol*replication_mode+10, sample_stock['A' + str(i+1)],0.3)
             for x in range (0,replication_mode):
+                right_pipette.aspirate(working_sample_vol, sample_stock['A' + str(i+1)],0.3)
                 right_pipette.dispense(working_sample_vol, working_plate['A' + str(col_num)].bottom(0.5), 0.5)
-                # right_pipette.blow_out(working_plate['A' + str(col_num)].top())
+                right_pipette.blow_out(working_plate['A' + str(col_num)].top())
                 col_num+=1
             remove_tip(right_pipette)
     def standard_loading(old, new):
@@ -300,16 +300,19 @@ def run(protocol: protocol_api.ProtocolContext):
         old: well from sample stock
         new: row letter from sample plate
         """
-        # left_pipette.pick_up_tip()
-        left_pipette.aspirate(working_sample_vol*replication_mode+5, bsa_rack[old].bottom(1.5), 0.25)
+        if left_pipette.has_tip == False:
+            left_pipette.pick_up_tip()
 
         for i in range(1, replication_mode+1):  # A1,A2,A3
+            left_pipette.blow_out(bsa_rack[old].top())
+            left_pipette.aspirate(working_sample_vol, bsa_rack[old].bottom(1.5), 0.1)
             left_pipette.dispense(working_sample_vol, working_plate[new + str(i)].bottom(0.1), 0.1)
+            left_pipette.blow_out(working_plate[new + str(i)].top())
         # remove_tip(left_pipette)
 
     # Standard Preparation  FINISH LATER
     # standard_vol_per_tube = 500#working_sample_vol*replication_mode+50
-    standard_vol_per_tube = (working_sample_vol*replication_mode+50)*2
+    standard_vol_per_tube = 200#(working_sample_vol*replication_mode+50)*2
     # dilutent_percentages = [0.25, 0.5, 0.625, 0.75, 0.875, 0.9375, 0.9875]
     stock = [1.5, 1.5, 1.5, 1, 0.5]
     concentrations = [1.5, 1, 0.75, 0.5, 0.25]
@@ -359,7 +362,7 @@ def run(protocol: protocol_api.ProtocolContext):
             print("bsa:  " + str((standard_vol_per_tube)*dilutent_percentages[i]))
             left_pipette.dispense((standard_vol_per_tube)*dilutent_percentages[i], bsa_rack[tube_spots[i]])
             left_pipette.mix(3, standard_vol_per_tube-5, bsa_rack[tube_spots[i]], 0.3)
-            left_pipette.blow_out(bsa_rack[tube_spots[i]].top())
+            left_pipette.blow_out(bsa_rack[tube_spots[i]].top(1))
             standard_loading(tube_spots[i], well_order[i])
             remove_tip(left_pipette)
             
@@ -391,7 +394,7 @@ def run(protocol: protocol_api.ProtocolContext):
                 left_pipette.aspirate(amt_extra_in_tube, bsa_rack[tube_spots[3]], 0.1)
             left_pipette.dispense(amt_extra_in_tube, bsa_rack[tube_spots[i]], 0.1)
             left_pipette.mix(3, standard_vol_per_tube-5, bsa_rack[tube_spots[i]], 0.3)
-            left_pipette.blow_out(bsa_rack[tube_spots[i]].top())
+            left_pipette.blow_out(bsa_rack[tube_spots[i]].top(1))
             standard_loading(tube_spots[i], well_order[i])
             remove_tip(left_pipette)
     
