@@ -1,3 +1,5 @@
+# TODO: fix the volume to height function for 15ml falcon tubes so that it works for lower volumes
+
 metadata = {
     "protocolName": "Single-plate Bradford protocol Standards no QT at all",
     "author": "Nico To",
@@ -53,7 +55,7 @@ def add_parameters(parameters):
         variable_name="number_samples",
         display_name="number_samples",
         description="Number of input samples.",
-        default=6,
+        default=24,
         minimum=0,
         maximum=40,
         unit="samples",
@@ -213,16 +215,48 @@ def run(protocol: protocol_api.ProtocolContext):
     # sample_location = bsa_rack["D6"]
     bsa_stock_location = bsa_rack["B1"]
     
+    #Variables for creating standards
+    standard_vol_per_tube = 200#(working_sample_vol*replication_mode+50)*2
+    concentrations = [1.5, 1, 0.75, 0.5, 0.25]
+    tube_spots = ["B1", "B2", "B3", "B4", "B5", "B6", "C1"]
+    well_order = ["A", "B", "C", "D", "E", "F", "G", "H"]
+    
     heatshaker.open_labware_latch()
     
     # Adding 25 ul Reagent A to Plate
-    number_occupied_wells = number_samples * replication_mode + replication_mode*8
+    number_occupied_wells = number_samples * replication_mode + replication_mode*(len(concentrations)+1)  # number of wells occupied by samples and standards
     amt_reagent_a = 25
     num_transfers = math.ceil((number_occupied_wells*amt_reagent_a)/(amt_reagent_a*(math.floor(pipette_max/amt_reagent_a))))
     well_counter = 0
     left_pipette.pick_up_tip()
     # vol_in_15_falcon_reagent_a = get_vol_15ml_falcon(find_aspirate_height(left_pipette, reagent_a_location))
 
+
+
+    # Wells with reagent A
+    regA_occupied_wells = []
+    #Standard Wells
+    for i in range (0, len(concentrations)+1):
+        for x in range (1, replication_mode+1):  # A1, A2, A3
+            regA_occupied_wells.append(well_order[i] + str(x))  # A1, A2, A3, B1, B2, B3, C1
+    current_column = replication_mode+ 1
+    for i in range (0, math.ceil(number_samples/8)):
+        if i != math.ceil(number_samples/8)-1:  # not on last iteration
+            for letter in well_order:
+                for x in range (1, replication_mode+1):
+                    regA_occupied_wells.append(letter + str(current_column+x-1))
+            current_column += replication_mode
+            print("1a")
+        else:
+            print("2")
+            remainder = number_samples % 8 if number_samples % 8 != 0 else 8
+            for letter in well_order[0:remainder]:
+                for x in range (1, replication_mode+1):
+                    regA_occupied_wells.append(letter + str(current_column+x-1))
+            current_column += replication_mode
+    regA_occupied_wells = sorted(regA_occupied_wells)
+    print(regA_occupied_wells)
+ 
     for i in range (0, num_transfers):      # FIX THIS
         if i != num_transfers-1:    # not on last iteration
             aspirate_vol = pipette_max - pipette_max%amt_reagent_a
@@ -235,7 +269,7 @@ def run(protocol: protocol_api.ProtocolContext):
         # left_pipette.aspirate(aspirate_vol+5, reagent_a_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_reagent_a)), 0.5)
         left_pipette.aspirate(aspirate_vol+5, reagent_a_location.bottom(1), 0.5)
         for x in range (0, math.floor(aspirate_vol/amt_reagent_a)):
-            left_pipette.dispense(amt_reagent_a, working_plate.wells()[well_counter].bottom(0.1), 0.25)
+            left_pipette.dispense(amt_reagent_a, working_plate[regA_occupied_wells[well_counter]].bottom(0.1), 0.25)
             well_counter += 1
         # remove_tip(left_pipette)
         # vol_in_15_falcon_reagent_a-=aspirate_vol+5
@@ -310,74 +344,32 @@ def run(protocol: protocol_api.ProtocolContext):
             left_pipette.blow_out(working_plate[new + str(i)].top())
         # remove_tip(left_pipette)
 
-    # Standard Preparation  FINISH LATER
-    # standard_vol_per_tube = 500#working_sample_vol*replication_mode+50
-    standard_vol_per_tube = 200#(working_sample_vol*replication_mode+50)*2
-    # dilutent_percentages = [0.25, 0.5, 0.625, 0.75, 0.875, 0.9375, 0.9875]
-    stock = [1.5, 1.5, 1.5, 1, 0.5]
-    concentrations = [1.5, 1, 0.75, 0.5, 0.25]
-    dilutent_percentages = [1, 2/3, 1/2, 1/3, 1/6]     # 1.5, 1, 0.75, 0.5, 0.25, 0
-    buffer_vols =[]
-    bsa_vols = []
-    dilutent_pipette_vols = []
-    serial_dilution_stock_tube = 3      # tubes 0 to 7
-    amt_extra_in_1_over_12_tube=0
-    tube_spots = ["B1", "B2", "B3", "B4", "B5", "B6", "C1"]
-    well_order = ["A", "B", "C", "D", "E", "F", "G"]
-
-    left_pipette.pick_up_tip()
-    vol_in_15_falcon_dilutent= get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
-    remove_tip(left_pipette)
-    for i in range(0, len(dilutent_percentages)):
-        if stock[i] == 1.5:
+    # Standard Preparation  
+    for i in range(0, len(concentrations)):
+        if concentrations[i] == 1.5:
             #buffer
-            
-            bsa_vols.append((standard_vol_per_tube)*dilutent_percentages[i])
-            buffer_vols.append((standard_vol_per_tube)*(1-dilutent_percentages[i]))
-            buffer_vol = (standard_vol_per_tube)*(1-dilutent_percentages[i])
-            if buffer_vol == 0:
-                if left_pipette.has_tip == False:
-                    left_pipette.pick_up_tip()
-                standard_loading(tube_spots[i], well_order[i])   
-                remove_tip(left_pipette)         
-                continue
+            # buffer_vol = (standard_vol_per_tube)*(1-dilutent_percentages[i])
             if left_pipette.has_tip == False:
                 left_pipette.pick_up_tip()
-            vol_in_15_falcon_dilutent -= (standard_vol_per_tube)*(1-dilutent_percentages[i])
-            print("current: " + str(concentrations[i]))
-            print("Buffer: " +str(buffer_vol))
-            left_pipette.aspirate(buffer_vol, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_dilutent)))
-            left_pipette.dispense(buffer_vol, bsa_rack[tube_spots[i]])
-            left_pipette.blow_out(bsa_rack[tube_spots[i]].top())
+            standard_loading(tube_spots[i], well_order[i])   
             remove_tip(left_pipette)
-            
-            #BSA
-            if left_pipette.has_tip == False:
-                left_pipette.pick_up_tip()
+            left_pipette.pick_up_tip()
+            vol_in_15_falcon_dilutent= get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
+            left_pipette.blow_out(dilutent_location.top())
+            # remove_tip(left_pipette)     
+            continue
 
-            if tube_spots[i] == "B1":
-                left_pipette.aspirate((standard_vol_per_tube)*dilutent_percentages[i], bsa_rack[tube_spots[0]], 0.1)
-            else:
-                left_pipette.aspirate((standard_vol_per_tube)*dilutent_percentages[i], bsa_stock_location, 0.1)
-            print("bsa:  " + str((standard_vol_per_tube)*dilutent_percentages[i]))
-            left_pipette.dispense((standard_vol_per_tube)*dilutent_percentages[i], bsa_rack[tube_spots[i]])
-            left_pipette.mix(3, standard_vol_per_tube-5, bsa_rack[tube_spots[i]], 0.3)
-            left_pipette.blow_out(bsa_rack[tube_spots[i]].top(1))
-            standard_loading(tube_spots[i], well_order[i])
-            remove_tip(left_pipette)
-            
-        else:
+        else:       # serial dilution with previous tube
             print(standard_vol_per_tube)
-            print(stock[i])
-            amt_extra_in_tube = (concentrations[i]*standard_vol_per_tube)/stock[i]#(1/dilutent_percentages[serial_dilution_stock_tube])*standard_vol_per_tube*dilutent_percentages[i]
+            print(concentrations[i])
+            amt_extra_in_tube = (concentrations[i]*standard_vol_per_tube)/concentrations[i-1]#(1/dilutent_percentages[serial_dilution_stock_tube])*standard_vol_per_tube*dilutent_percentages[i]
             # print(amt_extra_in_tube)
-            bsa_vols.append(0)
             # buffer_amt = standard_vol_per_tube-amt_extra_in_1_over_12_tube#standard_vol_per_tube*(1-dilutent_percentages[i]) - amt_extra_in_tube*(1-dilutent_percentages[i])
             buffer_amt = standard_vol_per_tube - amt_extra_in_tube#standard_vol_per_tube*(1-dilutent_percentages[i]) - amt_extra_in_tube*(1-dilutent_percentages[i])
-            buffer_vols.append(buffer_amt)
             
             #buffer
-            left_pipette.pick_up_tip()
+            if left_pipette.has_tip == False:
+                left_pipette.pick_up_tip()
             vol_in_15_falcon_dilutent -= buffer_amt
             print("current : " + str(concentrations[i]))
             print("buffer: " + str(buffer_amt))
@@ -388,10 +380,7 @@ def run(protocol: protocol_api.ProtocolContext):
             #bsa
             left_pipette.pick_up_tip()
             print("Stock: " + str(amt_extra_in_tube))
-            if stock[i] == 1:
-                left_pipette.aspirate(amt_extra_in_tube, bsa_rack[tube_spots[1]], 0.1)
-            else:
-                left_pipette.aspirate(amt_extra_in_tube, bsa_rack[tube_spots[3]], 0.1)
+            left_pipette.aspirate(amt_extra_in_tube, bsa_rack[tube_spots[i-1]], 0.1)
             left_pipette.dispense(amt_extra_in_tube, bsa_rack[tube_spots[i]], 0.1)
             left_pipette.mix(3, standard_vol_per_tube-5, bsa_rack[tube_spots[i]], 0.3)
             left_pipette.blow_out(bsa_rack[tube_spots[i]].top(1))
@@ -487,5 +476,5 @@ def run(protocol: protocol_api.ProtocolContext):
     else:
         protocol.move_labware(working_plate, "C2", use_gripper=True)
         heatshaker.close_labware_latch()
-    # left_pipette.pick_up_tip()
-    # left_pipette.pick_up_tip()
+    left_pipette.pick_up_tip()
+    left_pipette.pick_up_tip()
