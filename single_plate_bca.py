@@ -1,3 +1,5 @@
+#TODO: Serial dilution for standars
+
 #standard slow down create more
 
 metadata = {

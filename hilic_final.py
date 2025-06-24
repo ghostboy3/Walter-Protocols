@@ -9,7 +9,7 @@ from datetime import datetime
 metadata = {
     "protocolName": "SP3 HILIC protocol",
     "author": "Nico To",
-    "description": "HILIC sp3 protocol",
+    "description": "HILIC SP3 protocol",
 }
 
 requirements = {"robotType": "Flex", "apiLevel": "2.20"}
@@ -95,8 +95,20 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="dilute_sample",
         display_name="Dilute sample",
         description="Dilute protien sample based on concentration",
-        default=True
+        default=False
     )
+    
+    parameters.add_int(
+        variable_name="well_plate_type",
+        display_name="Reagent Plate Type",
+        choices=[
+            {"display_name": "Large", "value": 2},
+            {"display_name": "Normal/small", "value": 1},
+        ],
+        description="Type of well plate to use for beads",
+        default=2,
+    )
+
     parameters.add_bool(
         variable_name="dry_run",
         display_name="Dry Run",
@@ -218,7 +230,10 @@ def run(protocol: protocol_api.ProtocolContext):
     # tube_rack = protocol.load_labware("opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap", "A2", "bead + final solution rack")
     sample_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "A1", "sample stock plate")
     # reagent_plate = hs_mod.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt","reagent plate")
-    reagent_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt","A2","reagent plate")
+    if protocol.params.well_plate_type == 1:
+        reagent_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt","A2","reagent plate")
+    else:
+        reagent_plate = protocol.load_labware("corning_96_wellplate_360ul_flat", "A2", "reagent plate")  # change this to a 2ml deep well plate if needed
     digestion_buffer_reservoir = protocol.load_labware("nest_96_wellplate_2ml_deep", location= "B2")        ## change deck location
     # final_sample_plate = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "B1", "reagent plate")
     # buffer_rack = protocol.load_labware("opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical", "B1", "reagent stock rack")   # equilibration, binding, and wash buffer
@@ -291,6 +306,9 @@ def run(protocol: protocol_api.ProtocolContext):
     # working_reagent_reservoir["A8"].load_liquid(wash_buffer, wash_buffer_amt)
     # working_reagent_reservoir["A9"].load_liquid(wash_buffer, wash_buffer_amt)
     wash_buffer_storage = [working_reagent_reservoir["A7"], working_reagent_reservoir["A8"], working_reagent_reservoir["A9"]]
+    
+    trash_storage = working_reagent_reservoir["A11"]
+    
     # trash1=trash_reservoir.wells()[0].bottom(7)
     staging_slots = ['A4', 'B4', 'C4', 'D4']
     staging_racks = [protocol.load_labware('opentrons_flex_96_filtertiprack_200uL',
@@ -304,7 +322,16 @@ def run(protocol: protocol_api.ProtocolContext):
         if is_dry_run:
             pipette.return_tip()
         else:
-            pipette.drop_tip(chute)         
+            pipette.drop_tip(chute)
+            
+    def remove_tip_dispense_trash(pipette, amt, is_dry_run = protocol.params.dry_run):
+        if is_dry_run:
+            pipette.dispense(amt,trash_storage.top(0))
+            pipette.return_tip()
+        else:
+            pipette.dispense(amt,trash_storage.top(0))
+            pipette.drop_tip(chute)
+            
     def aspirate_spuernatent_to_trash(pipette, amt, speed, discard_tip = True, height = 0.3):
         '''amt: amount ot aspirirate out'''
         protocol.comment("\nAspriating supernatant to trash")
@@ -315,7 +342,7 @@ def run(protocol: protocol_api.ProtocolContext):
                 # pipette.pick_up_tip()
             pipette.aspirate(amt, reagent_plate['A' + str(i+1)].bottom(height), rate=speed)
             # pipette.air_gap(volume=10)
-            pipette.dispense(amt, chute,5)
+            pipette.dispense(amt, trash_storage)
             if discard_tip:
                 remove_tip(pipette, protocol.params.dry_run)
         if pipette.has_tip == True:
@@ -928,7 +955,8 @@ def run(protocol: protocol_api.ProtocolContext):
         
     protocol.comment("\nIncubating sample at 47°C for ___ hours. Mix continuously at "+str(shake_speed)+" rpm")
     hs_mod.open_labware_latch()
-
+    
+    
     protocol.move_labware(
         labware=lid, new_location=reagent_plate, use_gripper=True
     )
