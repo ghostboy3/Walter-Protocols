@@ -26,7 +26,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="numSamples",
         display_name="Number of Samples",
         description="Number of samples",
-        default=24,
+        default=15,
         minimum=1,
         maximum=96,
         unit="samples",
@@ -392,6 +392,7 @@ def run(protocol: protocol_api.ProtocolContext):
         for slot in staging_slots
     ]
     pipette_max = 1000 - 5
+    bead_amt_list = [6.25, 6.25, 6.25, 6.25, 6.25, 12.5, 12.5,12.5,12.5,12.5, 25,25,25,25,25]
 
     # REPLENISHING TIPS
     count = 0
@@ -599,19 +600,20 @@ def run(protocol: protocol_api.ProtocolContext):
         if not load_beads:
             return
         pipette_max = 195
-        num_transfers = math.ceil((bead_amt * num_samples) / (pipette_max))
-        well_counter = 0
+        # num_transfers = math.ceil((bead_amt * num_samples) / (pipette_max))
+        # well_counter = 0
         change_tip_after = 3
         protocol.comment("\nTransfering 25µl HILIC beads into well plate")
         # pick_up(left_pipette)
-        total_bead_amt = num_samples * bead_amt
-        num_transfers = math.ceil(
-            total_bead_amt / (change_tip_after * bead_amt)
-        )  # math.ceil(total_bead_amt / (math.floor((pipette_max-10)/bead_amt)*bead_amt))
+        total_bead_amt = sum(bead_amt_list)
+        # num_transfers = math.ceil(
+        #     total_bead_amt / (change_tip_after * bead_amt)
+        # )  # math.ceil(total_bead_amt / (math.floor((pipette_max-10)/bead_amt)*bead_amt))
         pick_up(left_pipette)
         # bead_amt_mix = num_samples*bead_amt
         for i in range (0, num_samples):
-            if i % 5 ==0:
+            bead_amt = bead_amt_list[i]
+            if i % 3 == 0:
                 left_pipette.mix(3, min(200, (num_samples-i)*bead_amt), bead_storage, 0.5)
                 left_pipette.blow_out(bead_storage)
             left_pipette.aspirate(bead_amt, bead_storage.bottom(0.1), 0.1)
@@ -620,7 +622,7 @@ def run(protocol: protocol_api.ProtocolContext):
             )
             left_pipette.blow_out(reagent_plate.wells()[i].top())
         remove_tip(left_pipette, protocol.params.dry_run)
-            
+ 
             
         # for i in range(0, num_transfers):
         #     if i == num_transfers - 1:  # on last iteration
@@ -1043,12 +1045,18 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     protocol.delay(
-        seconds=bead_settle_time + 5,
+        seconds=bead_settle_time,
         msg="waiting 7 seconds for microparticles to clear",
     )
-    aspirate_spuernatent_to_trash(
-        right_pipette, bead_amt - (bead_amt - 5),speed = 0.2, discard_tip=False
-    )
+    pick_up(left_pipette)
+    for i in range (0, num_samples):
+        left_pipette.aspirate(bead_amt_list[i]-(bead_amt_list[i] - 5), reagent_plate.wells()[i].bottom(0.5), 0.1)
+        left_pipette.dispense(bead_amt_list[i]-(bead_amt_list[i] - 5), trash_storage)
+        left_pipette.blow_out(trash_storage.top())
+    remove_tip(left_pipette)
+    # aspirate_spuernatent_to_trash(
+    #     right_pipette, bead_amt - (bead_amt - 5),speed = 0.2, discard_tip=False
+    # )
 
     protocol.comment(
         "\nWashing and equilibrating the microparticles in "
