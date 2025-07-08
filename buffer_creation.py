@@ -32,7 +32,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="ammoniumAcetate_conc",
         display_name="Concentration Ammonium Acetate",
         description="_______ mM Ammonium Acetate (4.5pH)",
-        default=1000,
+        default=400,
         minimum=100,
         maximum=1000,
         unit="mM"
@@ -42,7 +42,7 @@ def add_parameters(parameters: protocol_api.Parameters):
         variable_name="create_buffers",
         display_name="Create buffers with Walt",
         description="Use walt to create/mix binding, wash, and equilibration buffers",
-        default=False
+        default=True
     )
     # ADD REDUCTION AND ALKYLATION AS A PARAMETER 
     
@@ -101,7 +101,7 @@ def get_eq_buffer_vols(total_buffer_amt, ammonium_acetate_concentration):
     Returns: A dictionary with all the volumes in ul
     '''
     acn = total_buffer_amt*0.15     #amount of acetonitrle
-    ammonium_acetate = (total_buffer_amt-acn)*(100/ammonium_acetate_concentration)
+    ammonium_acetate = (total_buffer_amt)*(100/ammonium_acetate_concentration)
     water = total_buffer_amt-acn-ammonium_acetate
     final_vols = {"acn": acn,
                   "ammonium_acetate": ammonium_acetate,
@@ -115,7 +115,7 @@ def get_binding_buffer_vols(total_buffer_amt, ammonium_acetate_concentration):
     Returns: A dictionary with all the volumes in ul
     '''
     acn = total_buffer_amt*0.30     #amount of acetonitrle
-    ammonium_acetate = (total_buffer_amt-acn)*(200/ammonium_acetate_concentration)
+    ammonium_acetate = (total_buffer_amt)*(200/ammonium_acetate_concentration)
     water = total_buffer_amt-acn-ammonium_acetate
     final_vols = {"acn": acn,
                   "ammonium_acetate": ammonium_acetate,
@@ -134,7 +134,7 @@ def get_wash_buffer_vols(total_buffer_amt):
     return final_vols
 
 
-aa_conc = 1000
+aa_conc = 400
 print("eq")
 print(get_eq_buffer_vols(5000, aa_conc))
 print("bb")
