@@ -413,7 +413,7 @@ def run(protocol: protocol_api.ProtocolContext):
             pipette.drop_tip(chute)
 
     def aspirate_spuernatent_to_trash(
-        pipette, amt, speed=0.2, discard_tip=True, height=0.5
+        pipette, amt, speed=0.07, discard_tip=True, height=0.4
     ):
         """amt: amount ot aspirirate out"""
         protocol.comment("\nAspriating supernatant to trash")
@@ -516,7 +516,7 @@ def run(protocol: protocol_api.ProtocolContext):
         aspirate_height = max(lld_height - 5, 1)
         return aspirate_height
 
-    def mix_sides(pipette, num_mixes, vol, plate, rate):
+    def mix_sides(pipette, num_mixes, vol, plate, rate=0.3):
         if protocol.params.well_plate_type == 1:    # normal/small plate
             pipette.mix(
                 num_mixes, vol, plate.bottom().move(types.Point(x=0, y=1, z=3.5)), rate=rate
@@ -557,6 +557,31 @@ def run(protocol: protocol_api.ProtocolContext):
                 rate=rate,
             )
             pipette.mix(1, vol, plate.bottom(1), rate=0.1)
+    
+    
+    def fancy_mix_sides(pipette, num_mixes, vol, plate, rate=0.3, num_points = 4):
+        radius = 3.2  # mm
+        # num_points = 8  # change to 12 or more for finer circle
+        z_offset = 1.5  # mm, height above the bottom of the well
+    
+    
+        for i in range(num_points):
+            angle_rad = 2 * math.pi * i / num_points
+            x = radius * math.cos(angle_rad)
+            y = radius * math.sin(angle_rad)
+            for a in range (0, num_mixes):
+                pipette.aspirate(vol, plate.bottom(1), rate=rate)
+                pipette.dispense(vol, plate.bottom().move(types.Point(x=x, y=y, z=z_offset)), rate=rate)
+            # pipette.mix(
+            #     num_mixes,
+            #     vol,
+            #     plate.bottom().move(types.Point(x=x, y=y, z=z_offset)),
+            #     rate=rate,
+            # )
+
+        # Final central mix
+        pipette.mix(1, vol, plate.bottom(z=z_offset), rate=0.1)
+
     def delay(seconds, msg=""):
         if protocol.params.dry_run:
             return
@@ -609,18 +634,22 @@ def run(protocol: protocol_api.ProtocolContext):
         # num_transfers = math.ceil(
         #     total_bead_amt / (change_tip_after * bead_amt)
         # )  # math.ceil(total_bead_amt / (math.floor((pipette_max-10)/bead_amt)*bead_amt))
-        pick_up(left_pipette)
-        # bead_amt_mix = num_samples*bead_amt
+        # pick_up(left_pipette)
+        bead_amt_mix = total_bead_amt
         for i in range (0, num_samples):
             bead_amt = bead_amt_list[i]
             if i % 3 == 0:
-                left_pipette.mix(3, min(200, (num_samples-i)*bead_amt), bead_storage, 0.5)
+                remove_tip(left_pipette)
+                pick_up(left_pipette)
+                left_pipette.mix(3, min(200, bead_amt_mix), bead_storage, 0.5)
                 left_pipette.blow_out(bead_storage)
+                
             left_pipette.aspirate(bead_amt, bead_storage.bottom(0.1), 0.1)
             left_pipette.dispense(
                 bead_amt, reagent_plate.wells()[i], 0.1
             )
             left_pipette.blow_out(reagent_plate.wells()[i].top())
+            bead_amt_mix -= bead_amt
         remove_tip(left_pipette, protocol.params.dry_run)
  
             
@@ -867,7 +896,7 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.dispense(5, sample_plate["A" + str(i + 1)].bottom(1), 0.5)
             right_pipette.mix(
                 3,
-                protein_sample_amt - 10,
+                protein_sample_amt - 20,
                 sample_plate["A" + str(i + 1)].bottom(1),
                 0.2,
             )
@@ -988,7 +1017,7 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.dispense(5, sample_plate["A" + str(i + 1)].bottom(1), 0.5)
             right_pipette.mix(
                 3,
-                protein_sample_amt - 10,
+                protein_sample_amt - 20,
                 sample_plate["A" + str(i + 1)].bottom(1),
                 0.2,
             )
@@ -1085,22 +1114,13 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.dispense(
                 wash_volume, reagent_plate["A" + str(i + 1)].bottom(2), 0.3
             )
-            if wash_num == 0:  # first run
-                mix_sides(
-                    right_pipette,
-                    2,
-                    wash_volume - 50,
-                    reagent_plate["A" + str(i + 1)],
-                    0.5,
-                )
-            else:
-                mix_sides(
-                    right_pipette,
-                    1,
-                    wash_volume - 50,
-                    reagent_plate["A" + str(i + 1)],
-                    0.5,
-                )
+            fancy_mix_sides(
+                right_pipette,
+                2,
+                wash_volume - 50,
+                reagent_plate["A" + str(i + 1)],
+            )
+
 
             right_pipette.blow_out(reagent_plate["A" + str(i + 1)].top())
             right_pipette.touch_tip()
@@ -1121,7 +1141,7 @@ def run(protocol: protocol_api.ProtocolContext):
                 seconds=bead_settle_time + 5, msg="waiting for beads to settle (20 sec)"
             )
             aspirate_spuernatent_to_trash(
-                right_pipette, wash_volume - 15,speed = 0.25,  discard_tip=False
+                right_pipette, wash_volume - 15,  discard_tip=False
             )  # leave the last 5ul in the well plate
         elif wash_num != num_washes - 1:  # Not on the last wash yet
             hs_mod.open_labware_latch()
@@ -1170,7 +1190,7 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     aspirate_spuernatent_to_trash(
-        right_pipette, wash_volume + 20, 0.5, discard_tip=False
+        right_pipette, wash_volume + 20, discard_tip=False
     )
 
     hs_mod.open_labware_latch()
@@ -1187,7 +1207,7 @@ def run(protocol: protocol_api.ProtocolContext):
         right_pipette.dispense(
             protein_added_to_beads, reagent_plate["A" + str(i + 1)].bottom(1), rate=0.1
         )
-        mix_sides(right_pipette, 2, 50, reagent_plate["A" + str(i + 1)], 0.5)
+        fancy_mix_sides(right_pipette, 2, 50, reagent_plate["A" + str(i + 1)])
         # right_pipette.mix(3, 30, reagent_plate['A' + str(i+1)].bottom(0.5), rate=0.1)
         right_pipette.dispense(10, reagent_plate["A" + str(i + 1)].top(1), rate=0.1)
         right_pipette.blow_out(reagent_plate["A" + str(i + 1)].top())
@@ -1257,7 +1277,7 @@ def run(protocol: protocol_api.ProtocolContext):
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, magnetic_block, use_gripper=True)
     protocol.delay(seconds=bead_settle_time, msg="waiting for beads to settle (20 sec)")
-    aspirate_spuernatent_to_trash(right_pipette, wash_volume - 15, 0.2)
+    aspirate_spuernatent_to_trash(right_pipette, wash_volume - 15)
 
     protocol.comment(
         "\nResuspend beads in "
@@ -1288,22 +1308,13 @@ def run(protocol: protocol_api.ProtocolContext):
                 reagent_plate["A" + str(i + 1)].bottom(2),
                 rate=0.5,
             )
-            if wash_num == num_washes - 1:  # last wass
-                mix_sides(
-                    right_pipette,
-                    5,
-                    wash_buffer_resuspend_amt-20,
-                    reagent_plate["A" + str(i + 1)],
-                    0.5,
-                )
-            else:
-                mix_sides(
-                    right_pipette,
-                    4,
-                    wash_buffer_resuspend_amt-20,
-                    reagent_plate["A" + str(i + 1)],
-                    0.5,
-                )
+            fancy_mix_sides(
+                right_pipette,
+                3,
+                wash_buffer_resuspend_amt-20,
+                reagent_plate["A" + str(i + 1)], num_points=8
+            )
+
             # right_pipette.mix(4, wash_buffer_resuspend_amt-10, reagent_plate['A' + str(i+1)].bottom(2),rate= 3)
             right_pipette.blow_out(reagent_plate["A" + str(i + 1)].top())
             right_pipette.blow_out(reagent_plate["A" + str(i + 1)].top())
@@ -1324,14 +1335,14 @@ def run(protocol: protocol_api.ProtocolContext):
         )
         if wash_num == num_washes - 1:  # last wash
             aspirate_spuernatent_to_trash(
-                right_pipette, wash_buffer_resuspend_amt + 15, 0.2
+                right_pipette, wash_buffer_resuspend_amt + 15
             )
         elif wash_num == 0:  # first wash
             aspirate_spuernatent_to_trash(
-                right_pipette, wash_buffer_resuspend_amt - 10, 0.2
+                right_pipette, wash_buffer_resuspend_amt - 10
             )
         else:
-            aspirate_spuernatent_to_trash(right_pipette, wash_buffer_resuspend_amt, 0.2)
+            aspirate_spuernatent_to_trash(right_pipette, wash_buffer_resuspend_amt)
     hs_mod.open_labware_latch()
     protocol.move_labware(reagent_plate, new_location=hs_mod, use_gripper=True)
     hs_mod.close_labware_latch()
@@ -1364,14 +1375,12 @@ def run(protocol: protocol_api.ProtocolContext):
     # MIXING DIGESTION BUFFER
     for i in range(0, math.ceil(num_samples / 8)):
         pick_up(right_pipette)
-        mix_sides(
+        fancy_mix_sides(
             right_pipette,
             3,
             digestion_buffer_per_sample_amt - 25,
-            reagent_plate["A" + str(i + 1)],
-            0.5,
+            reagent_plate["A" + str(i + 1)], num_points = 8
         )
-        # mix_sides_no_bubbles(right_pipette, 3, digestion_buffer_per_sample_amt-15, reagent_plate['A' + str(i+1)],1.5)
         right_pipette.blow_out(reagent_plate["A" + str(i + 1)].top())
         right_pipette.blow_out(reagent_plate["A" + str(i + 1)].top())
         # right_pipette.blow_out(reagent_plate['A' + str(i+1)].top(1))
