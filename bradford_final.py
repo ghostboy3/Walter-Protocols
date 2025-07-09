@@ -34,7 +34,8 @@ def get_height_15ml_falcon(volume):
     volume = volume / 1000
     if volume <= 1:  # cone part
         # print(-3.33*(volume**2)+15.45*volume+9.50)
-        return -3.33 * (volume**2) + 15.45 * volume + 9.50 - 1  # −3.33x2+15.45x+9.50
+        # return -3.33 * (volume**2) + 15.45 * volume + 9.50 - 1  # −3.33x2+15.45x+9.50
+        return 0.1
     else:
         return 6.41667 * volume + 15.1667 - 5
 def get_vol_15ml_falcon(height):
@@ -70,7 +71,7 @@ def add_parameters(parameters):
         variable_name="sample_vol",
         display_name="Amount of Sample",
         description="Amount of sample required in the duilution (only required if dilute_with_walt is True)",
-        default=10,
+        default=8,
         minimum=5,
         maximum=200,
         unit="ul",
@@ -79,7 +80,7 @@ def add_parameters(parameters):
         variable_name="buffer_vol",
         display_name="Amount of Buffer",
         description="Amount of buffer required in the duilution (only required if dilute_with_walt is True)",
-        default=90,
+        default=192,
         minimum=5,
         maximum=200,
         unit="ul",
@@ -363,11 +364,19 @@ def run(protocol: protocol_api.ProtocolContext):
         if left_pipette.has_tip == False:
             left_pipette.pick_up_tip()
         left_pipette.blow_out(bsa_rack[old].top())
-        left_pipette.aspirate(working_sample_vol*3+5, bsa_rack[old].bottom(1.5), 0.1)
+        
         for i in range(1, replication_mode+1):  # A1,A2,A3
+            left_pipette.aspirate(working_sample_vol, bsa_rack[old].bottom(1.5), 0.1)
             left_pipette.dispense(working_sample_vol, working_plate[new + str(i)].bottom(0.2), 0.1)
-            # left_pipette.blow_out(working_plate[new + str(i)].top())
+            left_pipette.blow_out(working_plate[new + str(i)].top())
         remove_tip(left_pipette)
+
+        
+        # left_pipette.aspirate(working_sample_vol*3+5, bsa_rack[old].bottom(1.5), 0.1)
+        # for i in range(1, replication_mode+1):  # A1,A2,A3
+        #     left_pipette.dispense(working_sample_vol, working_plate[new + str(i)].bottom(0.2), 0.2)
+        #     # left_pipette.blow_out(working_plate[new + str(i)].top())
+        # remove_tip(left_pipette)
 
     # Standard Preparation  
     for i in range(0, len(concentrations)):

@@ -34,7 +34,8 @@ def get_height_15ml_falcon(volume):
     volume = volume / 1000
     if volume <= 1:  # cone part
         # print(-3.33*(volume**2)+15.45*volume+9.50)
-        return -3.33 * (volume**2) + 15.45 * volume + 9.50 - 1  # −3.33x2+15.45x+9.50
+        # return -3.33 * (volume**2) + 15.45 * volume + 9.50 - 1  # −3.33x2+15.45x+9.50
+        return 0.1
     else:
         return 6.41667 * volume + 15.1667 - 5
 def get_vol_15ml_falcon(height):
@@ -70,7 +71,7 @@ def add_parameters(parameters):
         variable_name="sample_vol",
         display_name="Amount of Sample",
         description="Amount of sample required in the duilution (only required if dilute_with_walt is True)",
-        default=10,
+        default=8,
         minimum=5,
         maximum=200,
         unit="ul",
@@ -79,7 +80,7 @@ def add_parameters(parameters):
         variable_name="buffer_vol",
         display_name="Amount of Buffer",
         description="Amount of buffer required in the duilution (only required if dilute_with_walt is True)",
-        default=90,
+        default=192,
         minimum=5,
         maximum=200,
         unit="ul",
@@ -254,106 +255,6 @@ def run(protocol: protocol_api.ProtocolContext):
 
 
 
-
-    # Wells with reagent A
-    regA_occupied_wells = []
-    #Standard Wells
-    for i in range (0, len(concentrations)+1):
-        for x in range (1, replication_mode+1):  # A1, A2, A3
-            regA_occupied_wells.append(well_order[i] + str(x))  # A1, A2, A3, B1, B2, B3, C1
-    current_column = replication_mode+ 1
-    for i in range (0, math.ceil(number_samples/8)):
-        if i != math.ceil(number_samples/8)-1:  # not on last iteration
-            for letter in well_order:
-                for x in range (1, replication_mode+1):
-                    regA_occupied_wells.append(letter + str(current_column+x-1))
-            current_column += replication_mode
-            print("1a")
-        else:
-            print("2")
-            remainder = number_samples % 8 if number_samples % 8 != 0 else 8
-            for letter in well_order[0:remainder]:
-                for x in range (1, replication_mode+1):
-                    regA_occupied_wells.append(letter + str(current_column+x-1))
-            current_column += replication_mode
-    regA_occupied_wells = sorted(regA_occupied_wells)
-    regA_occupied_wells = sorted(regA_occupied_wells, key=lambda x: (x[0], int(re.findall(r'\d+', x)[0])))
-
-    print(regA_occupied_wells)
-    
-    for i in range (0, num_transfers):      # FIX THIS
-        if i != num_transfers-1:    # not on last iteration
-            aspirate_vol = pipette_max - pipette_max%amt_reagent_a
-        else:
-            aspirate_vol = (number_occupied_wells*amt_reagent_a)-(pipette_max - pipette_max%amt_reagent_a)*(num_transfers-1)
-        # print(aspirate_vol)
-        if left_pipette.has_tip == False:
-            left_pipette.pick_up_tip()
-        left_pipette.blow_out(reagent_a_location.top())
-        left_pipette.aspirate(aspirate_vol+5, reagent_a_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_reagent_a)), 0.5)
-        # left_pipette.aspirate(aspirate_vol+5, reagent_a_location.bottom(1), 0.5)
-        for x in range (0, math.floor(aspirate_vol/amt_reagent_a)):
-            left_pipette.dispense(amt_reagent_a, working_plate[regA_occupied_wells[well_counter]].bottom(0.1), 0.25)
-            well_counter += 1
-        # remove_tip(left_pipette)
-        vol_in_15_falcon_reagent_a-=aspirate_vol+5
-    remove_tip(left_pipette)
-    # remove_tip(left_pipette)
-
-    
-    
-    #Diluting Sample
-    if protocol.params.dulute_with_walt:
-        diluted_sample_offset = 6
-        left_pipette.pick_up_tip()
-        vol_in_15_falcon_dilutent = protocol.params.vol_dilutent#get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
-        num_transfers = math.ceil((number_samples*protocol.params.buffer_vol)/pipette_max)
-        well_counter = 0
-        col_num = replication_mode+1     # col num for the working_plate
-        for i in range (0, num_transfers):
-            if left_pipette.has_tip == False:
-                left_pipette.pick_up_tip()
-            
-            if i != num_transfers-1:    # not on last iteration
-                aspirate_vol = pipette_max - pipette_max%protocol.params.buffer_vol
-            else:
-                aspirate_vol = (number_samples*protocol.params.buffer_vol)-(pipette_max - pipette_max%protocol.params.buffer_vol)*(num_transfers-1)
-            if left_pipette.has_tip == False:
-                left_pipette.pick_up_tip()
-            left_pipette.blow_out(dilutent_location.top())
-            left_pipette.aspirate(aspirate_vol+5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_dilutent)), 1)
-            for x in range (0, math.floor(aspirate_vol/protocol.params.buffer_vol)):
-                left_pipette.dispense(protocol.params.buffer_vol, sample_stock.wells()[well_counter + 48], 0.75)
-                well_counter += 1
-            # remove_tip(left_pipette)
-            vol_in_15_falcon_dilutent-=aspirate_vol+5
-            if i %3 == 0 and i != 0:
-                remove_tip(left_pipette)
-        if left_pipette.has_tip:
-            remove_tip(left_pipette)
-        for i in range (0, math.ceil(number_samples/8)):
-            right_pipette.pick_up_tip()
-            right_pipette.aspirate(protocol.params.sample_vol, sample_stock['A' + str(i+1)].bottom(0.1), 0.1)
-            right_pipette.dispense(protocol.params.sample_vol, sample_stock['A' + str(i+1+diluted_sample_offset)], 0.1)
-            right_pipette.mix(3, protocol.params.sample_vol + protocol.params.buffer_vol-10, sample_stock['A' + str(i+1+diluted_sample_offset)], 0.1)
-            right_pipette.blow_out(sample_stock['A' + str(i+1+diluted_sample_offset)].top())
-            right_pipette.touch_tip(sample_stock['A' + str(i+1+diluted_sample_offset)])
-            right_pipette.aspirate(working_sample_vol*replication_mode+10, sample_stock['A' + str(i+1+diluted_sample_offset)],0.1)
-            for x in range (0,replication_mode):
-                right_pipette.dispense(working_sample_vol, working_plate['A' + str(col_num)].bottom(0.2), 0.1)
-                # right_pipette.blow_out(working_plate['A' + str(col_num)].top())
-                col_num+=1
-            remove_tip(right_pipette)
-    else:
-        col_num = replication_mode+1
-        for i in range (0, math.ceil(number_samples/8)):
-            right_pipette.pick_up_tip()
-            right_pipette.aspirate(working_sample_vol*3+5, sample_stock['A' + str(i+1)],0.1)
-            for x in range (0,replication_mode):
-                right_pipette.dispense(working_sample_vol, working_plate['A' + str(col_num)].bottom(0.2), 0.1)
-                # right_pipette.blow_out(working_plate['A' + str(col_num)].top())
-                col_num+=1
-            remove_tip(right_pipette)
     def standard_loading(old, new):
         """
         old: well from sample stock
@@ -363,9 +264,17 @@ def run(protocol: protocol_api.ProtocolContext):
         if left_pipette.has_tip == False:
             left_pipette.pick_up_tip()
         left_pipette.blow_out(bsa_rack[old].top())
+        
+        # for i in range(1, replication_mode+1):  # A1,A2,A3
+        #     left_pipette.aspirate(working_sample_vol, bsa_rack[old].bottom(1.5), 0.1)
+        #     left_pipette.dispense(working_sample_vol, working_plate[new + str(i)].bottom(0.2), 0.1)
+        #     left_pipette.blow_out(working_plate[new + str(i)].top())
+        # remove_tip(left_pipette)
+
+        
         left_pipette.aspirate(working_sample_vol*3+5, bsa_rack[old].bottom(1.5), 0.1)
         for i in range(1, replication_mode+1):  # A1,A2,A3
-            left_pipette.dispense(working_sample_vol, working_plate[new + str(i)].bottom(0.2), 0.1)
+            left_pipette.dispense(working_sample_vol, working_plate[new + str(i)].bottom(0.2), 0.2)
             # left_pipette.blow_out(working_plate[new + str(i)].top())
         remove_tip(left_pipette)
 
