@@ -136,11 +136,11 @@ def get_wash_buffer_vols(total_buffer_amt):
 
 aa_conc = 400
 print("eq")
-print(get_eq_buffer_vols(5000, aa_conc))
+print(get_eq_buffer_vols(10000, aa_conc))
 print("bb")
 print(get_binding_buffer_vols(5000, aa_conc))
 print("wb")
-print(get_wash_buffer_vols(5000))
+print(get_wash_buffer_vols(10000))
 # def run(protocol: protocol_api.ProtocolContext):
 #     #defining variables
 #     wash_volume = 100#protocol.params.wash_volume   #µl
