@@ -144,7 +144,7 @@ def run(protocol: protocol_api.ProtocolContext):
     # LOADING TIPS
     tips = [
         protocol.load_labware("opentrons_flex_96_filtertiprack_200uL", slot)
-        for slot in ["A3", "B3", "C3"]
+        for slot in ["A3"]
     ]
     chute = protocol.load_waste_chute()
 
@@ -219,7 +219,7 @@ def run(protocol: protocol_api.ProtocolContext):
     # LOADING LIQUIDS
     reagent_stock["A1"].load_liquid(dilutent, 9000)
     reagent_stock["A2"].load_liquid(Reagent_A, 9000)
-    bsa_rack["A1"].load_liquid(bsa_stock, 550)
+    bsa_rack["B1"].load_liquid(bsa_stock, 550)
     # reagent_stock["A3"].load_liquid(Reagent_A, 22000)
     # bsa_rack["D1"].load_liquid(Reagent_B, 1000)
     # bsa_rack["B1"].load_liquid(empty_tube, 1)  # 1500 µg/mL
@@ -227,8 +227,8 @@ def run(protocol: protocol_api.ProtocolContext):
     bsa_rack["B3"].load_liquid(empty_tube, 1)  # 750 µg/mL
     bsa_rack["B4"].load_liquid(empty_tube, 1)  # 500 µg/mL
     bsa_rack["B5"].load_liquid(empty_tube, 1)  # 250 µg/mL
-    bsa_rack["B6"].load_liquid(empty_tube, 1)  # 125 µg/mL
-    bsa_rack["C1"].load_liquid(empty_tube, 1)  # 25 µg/mL
+    # bsa_rack["B6"].load_liquid(empty_tube, 1)  # 125 µg/mL
+    # bsa_rack["C1"].load_liquid(empty_tube, 1)  # 25 µg/mL
     # bsa_rack["D6"].load_liquid(sample, 1)
 
     # dye_location = reagent_stock["A3"]
@@ -251,7 +251,7 @@ def run(protocol: protocol_api.ProtocolContext):
     num_transfers = math.ceil((number_occupied_wells*amt_reagent_a)/(amt_reagent_a*(math.floor(pipette_max/amt_reagent_a))))
     well_counter = 0
     left_pipette.pick_up_tip()
-    vol_in_15_falcon_reagent_a = protocol.params.vol_reagent_a#get_vol_15ml_falcon(find_aspirate_height(left_pipette, reagent_a_location))
+    vol_in_15_falcon_reagent_a = 5000 #get_vol_15ml_falcon(find_aspirate_height(left_pipette, reagent_a_location))
 
 
 
@@ -307,7 +307,7 @@ def run(protocol: protocol_api.ProtocolContext):
     if protocol.params.dulute_with_walt:
         diluted_sample_offset = 6
         left_pipette.pick_up_tip()
-        vol_in_15_falcon_dilutent = protocol.params.vol_dilutent#get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
+        vol_in_15_falcon_dilutent = 5000 # get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
         num_transfers = math.ceil((number_samples*protocol.params.buffer_vol)/pipette_max)
         well_counter = 0
         col_num = replication_mode+1     # col num for the working_plate
@@ -414,7 +414,7 @@ def run(protocol: protocol_api.ProtocolContext):
     tube_tracker = 0
     # print(transfers)
     left_pipette.pick_up_tip()
-    vol_in_15_falcon_dilutent= protocol.params.vol_dilutent#get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
+    vol_in_15_falcon_dilutent=5000# get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
     for i in range(0, num_transfers):
         # left_pipette.pick_up_tip()
         vol_in_15_falcon_dilutent -= buffer_amt

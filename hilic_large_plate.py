@@ -1,5 +1,5 @@
 # TODO: Get protein dilution data from spread sheet
-#TODO: Add buffer right after aspirating for digestion buffer and wash buffer steps
+# TODO: Add buffer right after aspirating for digestion buffer and wash buffer steps
 
 #TODO: protein input ug as param, mM for dtt and iaa conc
 from opentrons import protocol_api
@@ -238,8 +238,8 @@ def run(protocol: protocol_api.ProtocolContext):
     )
     
     #FINAL STEP
-    amt_of_sample_to_collect = 16       #digestion_buffer_per_sample_amt + 10
-    amt_final_buffer_to_add = 64
+    amt_of_sample_to_collect = digestion_buffer_per_sample_amt-3
+    amt_final_buffer_to_add = 0#64
     # Random variables for testing
     amt_extra_in_2ml_reservoir = 40
 
@@ -1510,7 +1510,7 @@ def run(protocol: protocol_api.ProtocolContext):
             right_pipette.touch_tip()
             remove_tip(right_pipette, protocol.params.dry_run)
         
-    add_formic_acid = False
+    add_formic_acid = True
     if add_formic_acid:
         for i in range(0, num_samples):
             # protocol.comment("hi")
