@@ -1,5 +1,5 @@
 # TODO: fix the volume to height function for 15ml falcon tubes so that it works for lower volumes
-import re
+# TODO: dilution parameter from 0 to 50 times, ensure everything is within range
 metadata = {
     "protocolName": "Single-plate Bradford protocol QT Standards ",
     "author": "Nico To",
@@ -8,6 +8,7 @@ metadata = {
 requirements = {"robotType": "Flex", "apiLevel": "2.21"}
 import math
 from opentrons import protocol_api
+import re
 
 def get_vol_50ml_falcon(height):
     """
@@ -68,22 +69,14 @@ def add_parameters(parameters):
         default=True,
     )
     parameters.add_int(
-        variable_name="sample_vol",
-        display_name="Amount of Sample",
-        description="Amount of sample required in the duilution (only required if dilute_with_walt is True)",
-        default=8,
-        minimum=5,
-        maximum=200,
-        unit="ul",
-    )
-    parameters.add_int(
-        variable_name="buffer_vol",
-        display_name="Amount of Buffer",
-        description="Amount of buffer required in the duilution (only required if dilute_with_walt is True)",
-        default=192,
-        minimum=5,
-        maximum=200,
-        unit="ul",
+        variable_name="diluton_amount",
+        display_name="Dilution Amount",
+        description="Amount to dilute by",
+        default=25,
+        minimum=0,
+        maximum=25,
+        unit="times",
+
     )
     parameters.add_int(
         variable_name="working_sample_vol",
@@ -210,7 +203,7 @@ def run(protocol: protocol_api.ProtocolContext):
     )
     sample = protocol.define_liquid(
         "sample",
-        "Put 20ul extra",
+        "sample",
         "#40FDF4",
     )
 
@@ -305,10 +298,16 @@ def run(protocol: protocol_api.ProtocolContext):
     
     #Diluting Sample
     if protocol.params.dulute_with_walt:
+        sample_vol = max((working_sample_vol*3+5)/protocol.params.diluton_amount, 5)
+        
+        for i in range (0, number_samples):
+            sample_stock.wells()[i].load_liquid(sample, sample_vol)
+
+        buffer_vol = sample_vol*protocol.params.diluton_amount - sample_vol
         diluted_sample_offset = 6
         left_pipette.pick_up_tip()
         vol_in_15_falcon_dilutent = 5000 # get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
-        num_transfers = math.ceil((number_samples*protocol.params.buffer_vol)/pipette_max)
+        num_transfers = math.ceil((number_samples*buffer_vol)/pipette_max)
         well_counter = 0
         col_num = replication_mode+1     # col num for the working_plate
         for i in range (0, num_transfers):
@@ -316,15 +315,15 @@ def run(protocol: protocol_api.ProtocolContext):
                 left_pipette.pick_up_tip()
             
             if i != num_transfers-1:    # not on last iteration
-                aspirate_vol = pipette_max - pipette_max%protocol.params.buffer_vol
+                aspirate_vol = min(pipette_max - pipette_max%buffer_vol, buffer_vol)
             else:
-                aspirate_vol = (number_samples*protocol.params.buffer_vol)-(pipette_max - pipette_max%protocol.params.buffer_vol)*(num_transfers-1)
+                aspirate_vol = min((number_samples*buffer_vol)-(pipette_max - pipette_max%buffer_vol)*(num_transfers-1), buffer_vol)
             if left_pipette.has_tip == False:
                 left_pipette.pick_up_tip()
             left_pipette.blow_out(dilutent_location.top())
             left_pipette.aspirate(aspirate_vol+5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_dilutent)), 1)
-            for x in range (0, math.floor(aspirate_vol/protocol.params.buffer_vol)):
-                left_pipette.dispense(protocol.params.buffer_vol, sample_stock.wells()[well_counter + 48], 0.75)
+            for x in range (0, math.floor(aspirate_vol/buffer_vol)):
+                left_pipette.dispense(buffer_vol, sample_stock.wells()[well_counter + 48], 0.75)
                 well_counter += 1
             remove_tip(left_pipette)
             vol_in_15_falcon_dilutent-=aspirate_vol+5
@@ -334,9 +333,10 @@ def run(protocol: protocol_api.ProtocolContext):
             remove_tip(left_pipette)
         for i in range (0, math.ceil(number_samples/8)):
             right_pipette.pick_up_tip()
-            right_pipette.aspirate(protocol.params.sample_vol, sample_stock['A' + str(i+1)].bottom(0.1), 0.1)
-            right_pipette.dispense(protocol.params.sample_vol, sample_stock['A' + str(i+1+diluted_sample_offset)], 0.1)
-            right_pipette.mix(3, protocol.params.sample_vol + protocol.params.buffer_vol-30, sample_stock['A' + str(i+1+diluted_sample_offset)], 0.1)
+            print(sample_vol)
+            right_pipette.aspirate(sample_vol, sample_stock['A' + str(i+1)].bottom(0.1), 0.1)
+            right_pipette.dispense(sample_vol, sample_stock['A' + str(i+1+diluted_sample_offset)], 0.1)
+            right_pipette.mix(3, sample_vol + buffer_vol-5, sample_stock['A' + str(i+1+diluted_sample_offset)], 0.1)
             right_pipette.blow_out(sample_stock['A' + str(i+1+diluted_sample_offset)].top())
             right_pipette.touch_tip(sample_stock['A' + str(i+1+diluted_sample_offset)])
             right_pipette.aspirate(working_sample_vol*replication_mode+10, sample_stock['A' + str(i+1+diluted_sample_offset)],0.1)
