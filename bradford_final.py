@@ -1,8 +1,8 @@
 # TODO: fix the volume to height function for 15ml falcon tubes so that it works for lower volumes
 metadata = {
-    "protocolName": "Single-plate Bradford protocol QT Standards ",
+    "protocolName": "Single-plate Bradford protocol ",
     "author": "Nico To",
-    "description": "Bradford for 1-24 samples. QT every step except creating standards [Best one]",
+    "description": "Bradford for 1-24 samples in triplicate or 1-40 in duplicate.",
 }
 requirements = {"robotType": "Flex", "apiLevel": "2.21"}
 import math
