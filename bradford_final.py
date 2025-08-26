@@ -1,5 +1,4 @@
 # TODO: fix the volume to height function for 15ml falcon tubes so that it works for lower volumes
-# TODO: dilution parameter from 0 to 50 times, ensure everything is within range
 metadata = {
     "protocolName": "Single-plate Bradford protocol QT Standards ",
     "author": "Nico To",
@@ -49,7 +48,7 @@ def get_vol_15ml_falcon(height):
         volume = (((15.45 + math.sqrt(351.9225 - (13.32 * height)))) / 6.66) * 1000
         return volume
     else:
-        volume = float(((height - 10.1667) / 6.41667) * 1000)
+        volume = (((height - 10.1667) / 6.41667) * 1000)
         return volume
 
 def add_parameters(parameters):
@@ -62,31 +61,25 @@ def add_parameters(parameters):
         maximum=40,
         unit="samples",
     )
-    parameters.add_bool(
-        variable_name="dulute_with_walt",
-        display_name="Dilute using Walter",
-        description="True: Dilute using Walter, False: Dilute manually",
-        default=True,
-    )
     parameters.add_int(
         variable_name="diluton_amount",
         display_name="Dilution Amount",
-        description="Amount to dilute by",
-        default=25,
+        description="Amount to dilute by. 0 means no dilution",
+        default=0,
         minimum=0,
         maximum=25,
         unit="times",
 
     )
-    parameters.add_int(
-        variable_name="working_sample_vol",
-        display_name="Working Sample Volume",
-        description="Volume of working sample (Volume for the samples in the flat well plate)",
-        default=5,
-        minimum=5,
-        maximum=50,
-        unit="ul",
-    )
+    # parameters.add_int(
+    #     variable_name="working_sample_vol",
+    #     display_name="Working Sample Volume",
+    #     description="Volume of working sample (Volume for the samples in the flat well plate)",
+    #     default=5,
+    #     minimum=5,
+    #     maximum=50,
+    #     unit="ul",
+    # )
     parameters.add_int(
         variable_name="replication_mode",
         display_name="Replication Mode",
@@ -97,27 +90,6 @@ def add_parameters(parameters):
         default=3,
     )
     
-    
-    #DELETE
-    parameters.add_int(
-        variable_name="vol_reagent_a",
-        display_name="Volume in reagent A falcon",
-        description="volume in the reagent A falcon tube (in ul)",
-        default=2000,
-        minimum=0,
-        maximum=15000,
-        unit="ul",
-    )
-    parameters.add_int(
-        variable_name="vol_dilutent",
-        display_name="Volume in dilutent falcon",
-        description="volume in dilutent falcon tube (in ul)",
-        default=2000,
-        minimum=0,
-        maximum=15000,
-        unit="ul",
-    )
-
     parameters.add_bool(
         variable_name="dry_run",
         display_name="Dry Run",
@@ -131,7 +103,7 @@ def run(protocol: protocol_api.ProtocolContext):
     number_samples = protocol.params.number_samples
     is_dry_run = protocol.params.dry_run
     add_lid = True  # protocol.params.add_lid
-    working_sample_vol = protocol.params.working_sample_vol
+    working_sample_vol = 5#protocol.params.working_sample_vol
     pipette_max = 200-5
 
     # LOADING TIPS
@@ -244,7 +216,7 @@ def run(protocol: protocol_api.ProtocolContext):
     num_transfers = math.ceil((number_occupied_wells*amt_reagent_a)/(amt_reagent_a*(math.floor(pipette_max/amt_reagent_a))))
     well_counter = 0
     left_pipette.pick_up_tip()
-    vol_in_15_falcon_reagent_a = 5000 #get_vol_15ml_falcon(find_aspirate_height(left_pipette, reagent_a_location))
+    vol_in_15_falcon_reagent_a = get_vol_15ml_falcon(find_aspirate_height(left_pipette, reagent_a_location))
 
 
 
@@ -284,7 +256,11 @@ def run(protocol: protocol_api.ProtocolContext):
         if left_pipette.has_tip == False:
             left_pipette.pick_up_tip()
         left_pipette.blow_out(reagent_a_location.top())
-        left_pipette.aspirate(aspirate_vol+5, reagent_a_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_reagent_a)), 0.5)
+        try:
+            left_pipette.aspirate(aspirate_vol+5, reagent_a_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_reagent_a)), 0.5)
+        except:
+            left_pipette.aspirate(aspirate_vol+5, reagent_a_location.bottom(1), 0.5)
+
         # left_pipette.aspirate(aspirate_vol+5, reagent_a_location.bottom(1), 0.5)
         for x in range (0, math.floor(aspirate_vol/amt_reagent_a)):
             left_pipette.dispense(amt_reagent_a, working_plate[regA_occupied_wells[well_counter]].bottom(0.2), 0.1)
@@ -297,7 +273,12 @@ def run(protocol: protocol_api.ProtocolContext):
     
     
     #Diluting Sample
-    if protocol.params.dulute_with_walt:
+    if protocol.params.diluton_amount == 0:
+        dilute_with_walt = False
+    else:
+        dilute_with_walt = True
+    
+    if dilute_with_walt:
         sample_vol = max((working_sample_vol*3+5)/protocol.params.diluton_amount, 5)
         
         for i in range (0, number_samples):
@@ -306,7 +287,7 @@ def run(protocol: protocol_api.ProtocolContext):
         buffer_vol = sample_vol*protocol.params.diluton_amount - sample_vol
         diluted_sample_offset = 6
         left_pipette.pick_up_tip()
-        vol_in_15_falcon_dilutent = 5000 # get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
+        vol_in_15_falcon_dilutent =  get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
         num_transfers = math.ceil((number_samples*buffer_vol)/pipette_max)
         well_counter = 0
         col_num = replication_mode+1     # col num for the working_plate
@@ -321,7 +302,11 @@ def run(protocol: protocol_api.ProtocolContext):
             if left_pipette.has_tip == False:
                 left_pipette.pick_up_tip()
             left_pipette.blow_out(dilutent_location.top())
-            left_pipette.aspirate(aspirate_vol+5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_dilutent)), 1)
+            try:
+                left_pipette.aspirate(aspirate_vol+5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_dilutent)), 1)
+            except:
+                left_pipette.aspirate(aspirate_vol+5, dilutent_location.bottom(1), 1)
+
             for x in range (0, math.floor(aspirate_vol/buffer_vol)):
                 left_pipette.dispense(buffer_vol, sample_stock.wells()[well_counter + 48], 0.75)
                 well_counter += 1
@@ -346,6 +331,9 @@ def run(protocol: protocol_api.ProtocolContext):
                 col_num+=1
             remove_tip(right_pipette)
     else:
+        for i in range (0, number_samples):
+            sample_stock.wells()[i].load_liquid(sample, working_sample_vol*3*10)
+
         col_num = replication_mode+1
         for i in range (0, math.ceil(number_samples/8)):
             right_pipette.pick_up_tip()
@@ -414,12 +402,15 @@ def run(protocol: protocol_api.ProtocolContext):
     tube_tracker = 0
     # print(transfers)
     left_pipette.pick_up_tip()
-    vol_in_15_falcon_dilutent=5000# get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
+    vol_in_15_falcon_dilutent= get_vol_15ml_falcon(find_aspirate_height(left_pipette, dilutent_location))
     for i in range(0, num_transfers):
         # left_pipette.pick_up_tip()
         vol_in_15_falcon_dilutent -= buffer_amt
         left_pipette.blow_out(dilutent_location.top())
-        left_pipette.aspirate(transfers[i] +5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_dilutent)), 0.1)
+        try:
+            left_pipette.aspirate(transfers[i] +5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_dilutent)), 0.1)
+        except:
+            left_pipette.aspirate(transfers[i] +5, dilutent_location.bottom(1), 0.1)
         while transfers[i] > 0:
             if buffer_amts[tube_tracker] != 0:
                 left_pipette.dispense(buffer_amts[tube_tracker], bsa_rack[tube_spots[tube_tracker]], rate=0.1)
@@ -478,7 +469,10 @@ def run(protocol: protocol_api.ProtocolContext):
     vol_in_15_falcon_dilutent-=working_sample_vol*replication_mode
     remove_tip(left_pipette)
     left_pipette.pick_up_tip()
-    left_pipette.aspirate(working_sample_vol*replication_mode+5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_dilutent)), 0.25)
+    try:
+        left_pipette.aspirate(working_sample_vol*replication_mode+5, dilutent_location.bottom(get_height_15ml_falcon(vol_in_15_falcon_dilutent)), 0.25)
+    except:
+        left_pipette.aspirate(working_sample_vol*replication_mode+5, dilutent_location.bottom(1), 0.25)
     for i in range(1, replication_mode+1):  # A1,A2,A3
         current_letter = well_order[len(concentrations)]
         left_pipette.dispense(working_sample_vol, working_plate[current_letter + str(i)].bottom(0.1), 0.1)
